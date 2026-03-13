@@ -830,6 +830,8 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
           <button class="bs-btn" onclick="bsAddGroup()">+ GROUP</button>
           <button class="bs-btn bs-btn-purple" onclick="bsToggleConnect()" id="bs-connect-btn">⟷ CONNECT</button>
           <button class="bs-btn" onclick="bsClearCanvas()" style="color:var(--red)">CLEAR</button>
+          <button class="bs-btn" style="border-color:var(--purple);color:var(--purple)" onclick="bsOpenImport()">+ FROM CLAUDE</button>
+          <button class="bs-btn" style="border-color:var(--txt2);color:var(--txt2)" onclick="bsOpenPrompt()">⊡ PROMPT</button>
           <span style="font-size:9px;color:var(--txt3);margin-left:8px" id="bs-status">Click canvas to pan · Drag nodes to move · Right-click node for options</span>
         </div>
         <canvas id="bs-canvas" style="touch-action:none"></canvas>
@@ -1706,10 +1708,9 @@ function bsDrawNode(ctx, n, idx) {
   const col = BS_COLORS[n.type] || BS_COLORS.note;
   const isSelected = BS.dragging === idx || (BS.connecting && BS.connectFrom === idx);
 
-  // Screen coords
   const sx = wx(n.x), sy = wy(n.y);
   const sw = ws(n.w), sh = ws(n.h);
-  const pad = 12; // fixed screen pixels
+  const pad = 12;
 
   ctx.save();
 
@@ -1727,10 +1728,15 @@ function bsDrawNode(ctx, n, idx) {
     bsRoundRect(ctx, sx, sy, sw, sh, 8);
     ctx.fill(); ctx.stroke();
     ctx.setLineDash([]);
+    // Clip group label
+    ctx.save();
+    bsRoundRect(ctx, sx, sy, sw, sh, 8);
+    ctx.clip();
     ctx.fillStyle = col.label + '90';
     ctx.font = "bold 11px 'Space Mono'";
     ctx.textAlign = 'left';
     ctx.fillText((n.title||'GROUP').toUpperCase(), sx + pad, sy + 16);
+    ctx.restore();
     ctx.restore();
     return;
   }
@@ -1747,6 +1753,11 @@ function bsDrawNode(ctx, n, idx) {
   ctx.fill(); ctx.stroke();
   ctx.shadowBlur = 0;
 
+  // Clip ALL text to card bounds
+  ctx.save();
+  bsRoundRect(ctx, sx, sy, sw, sh, 6);
+  ctx.clip();
+
   // Type chip
   const chipY = sy + pad + 4;
   const chipLabel = n.type.toUpperCase();
@@ -1758,7 +1769,7 @@ function bsDrawNode(ctx, n, idx) {
   ctx.fillStyle = col.label;
   ctx.fillText(chipLabel, sx + pad + 5, chipY + 1);
 
-  // Title — fixed 12px, clipped to card width
+  // Title — fixed 12px, wrapped and clipped
   ctx.fillStyle = '#eef6ff';
   ctx.font = "bold 12px 'Syne'";
   ctx.textAlign = 'left';
@@ -1774,16 +1785,11 @@ function bsDrawNode(ctx, n, idx) {
     bsWrapText(ctx, n.notes, sx + pad, notesY, maxTW, 13, 3);
   }
 
-  // Link badge
+  // Link badge at bottom
   if (n.link) {
     ctx.font = "9px 'Space Mono'";
     ctx.fillStyle = col.label + '80';
-    // clip to card
-    ctx.save();
-    bsRoundRect(ctx, sx, sy, sw, sh, 6);
-    ctx.clip();
     ctx.fillText('⟶ ' + n.link, sx + pad, sy + sh - 10);
-    ctx.restore();
   }
 
   // Image
@@ -1795,7 +1801,8 @@ function bsDrawNode(ctx, n, idx) {
     } catch(e) {}
   }
 
-  ctx.restore();
+  ctx.restore(); // end clip
+  ctx.restore(); // end save
 }
 
 function bsDrawHtmlNode(ctx, n, idx, isSelected, sx, sy, sw, sh, pad) {
@@ -2491,6 +2498,91 @@ async function bsClearHtml(idx) {
 }
 
 // (old bsDrawHtmlNode removed — screen-space version inlined in bsDrawNode)
+
+
+
+// ── Brainstorm prompt modal ───────────────────────────────
+function bsOpenPrompt() {
+  document.getElementById('bs-prompt-overlay').style.display = 'flex';
+}
+
+function bsClosePrompt() {
+  document.getElementById('bs-prompt-overlay').style.display = 'none';
+  const btn = document.getElementById('bs-prompt-copy-btn');
+  btn.textContent = '📋 COPY PROMPT';
+  btn.style.background = 'var(--accent3)';
+  btn.style.color = 'var(--accent)';
+}
+
+function bsCopyPrompt() {
+  const text = document.getElementById('bs-prompt-text').value;
+  navigator.clipboard.writeText(text).then(function() {
+    const btn = document.getElementById('bs-prompt-copy-btn');
+    btn.textContent = '✓ COPIED';
+    btn.style.background = 'var(--green)';
+    btn.style.color = 'var(--bg)';
+    setTimeout(bsClosePrompt, 1200);
+  });
+}
+
+// ── Brainstorm import from Claude ────────────────────────
+function bsOpenImport() {
+  const el = document.getElementById('bs-import-overlay');
+  el.style.display = 'flex';
+  document.getElementById('bs-import-input').value = '';
+  document.getElementById('bs-import-err').style.display = 'none';
+  setTimeout(() => document.getElementById('bs-import-input').focus(), 50);
+}
+
+function bsCloseImport() {
+  document.getElementById('bs-import-overlay').style.display = 'none';
+}
+
+function bsDoImport() {
+  const raw = document.getElementById('bs-import-input').value.trim();
+  const errEl = document.getElementById('bs-import-err');
+  errEl.style.display = 'none';
+
+  let nodes;
+  try {
+    nodes = JSON.parse(raw);
+    if (!Array.isArray(nodes)) throw new Error('Must be a JSON array');
+  } catch(e) {
+    errEl.textContent = 'Invalid JSON: ' + e.message;
+    errEl.style.display = 'block';
+    return;
+  }
+
+  // Place nodes in a spread pattern from canvas centre
+  const cx = (BS.W / 2 - BS.pan.x) / BS.scale;
+  const cy = (BS.H / 2 - BS.pan.y) / BS.scale;
+  const cols = Math.ceil(Math.sqrt(nodes.length));
+  const spacing = 230;
+
+  nodes.forEach(function(n, i) {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const valid = ['idea','feature','bug','ui','note','html','group'];
+    const type = valid.includes(n.type) ? n.type : 'idea';
+    BS.nodes.push({
+      id: Date.now() + i,
+      type: type,
+      title: n.title || 'Untitled',
+      notes: n.notes || '',
+      link: n.link || '',
+      x: cx - (cols * spacing / 2) + col * spacing + (Math.random() * 20 - 10),
+      y: cy - (Math.floor(nodes.length / cols) * spacing / 2) + row * spacing + (Math.random() * 20 - 10),
+      w: 200,
+      h: 90 + (n.notes ? 40 : 0),
+      imgData: null, _img: null
+    });
+  });
+
+  bsCloseImport();
+  bsDraw();
+  bsScheduleSave();
+  showToast(nodes.length + ' node' + (nodes.length !== 1 ? 's' : '') + ' added', 'success');
+}
 
 // ── Persistence ───────────────────────────────────────────
 function bsScheduleSave() {
@@ -3322,6 +3414,53 @@ document.addEventListener('DOMContentLoaded', () => {
     <div id="export-footer">
       <button class="modal-btn cancel" onclick="copyExport()">📋 COPY</button>
       <button class="modal-btn save" style="background:var(--purple)" onclick="downloadExport()">⬇ DOWNLOAD</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- BRAINSTORM IMPORT MODAL -->
+<div id="bs-import-overlay" onclick="if(event.target===this)bsCloseImport()" style="display:none;position:fixed;inset:0;background:#000000b0;z-index:9500;align-items:center;justify-content:center">
+  <div style="background:var(--panel);border:1px solid var(--border2);border-radius:4px;padding:20px;width:480px;max-width:94vw;box-shadow:0 8px 32px #000a">
+    <h4 style="font-family:var(--font-display);font-size:12px;color:var(--purple);letter-spacing:2px;margin-bottom:12px">+ FROM CLAUDE</h4>
+    <div style="font-size:9px;color:var(--txt3);margin-bottom:8px;letter-spacing:1px">PASTE JSON FROM CLAUDE — array of nodes</div>
+    <div style="font-size:9px;color:var(--txt3);margin-bottom:10px;background:var(--panel2);padding:8px;border-radius:2px;font-family:var(--font-ui);line-height:1.6">[{"type":"idea","title":"My Idea","notes":"details here"},<br>{"type":"feature","title":"Feature name","notes":"","link":"roadmap"}]</div>
+    <textarea id="bs-import-input" style="width:100%;height:120px;background:var(--panel2);border:1px solid var(--border2);color:var(--white);font-family:var(--font-ui);font-size:10px;padding:8px;border-radius:2px;outline:none;resize:vertical" placeholder='[{"type":"idea","title":"...","notes":"..."}]'></textarea>
+    <div id="bs-import-err" style="font-size:9px;color:var(--red);margin-top:6px;display:none"></div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button onclick="bsCloseImport()" style="flex:1;padding:8px;background:var(--panel2);border:1px solid var(--border2);color:var(--txt);font-family:var(--font-ui);font-size:9px;cursor:pointer;border-radius:2px;letter-spacing:1px">CANCEL</button>
+      <button onclick="bsDoImport()" style="flex:1;padding:8px;background:var(--purple);border:none;color:var(--bg);font-family:var(--font-ui);font-size:9px;font-weight:700;cursor:pointer;border-radius:2px;letter-spacing:1px">ADD NODES</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- BRAINSTORM PROMPT MODAL -->
+<div id="bs-prompt-overlay" onclick="if(event.target===this)bsClosePrompt()" style="display:none;position:fixed;inset:0;background:#000000b0;z-index:9500;align-items:center;justify-content:center">
+  <div style="background:var(--panel);border:1px solid var(--border2);border-radius:4px;padding:20px;width:520px;max-width:94vw;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 8px 32px #000a">
+    <div style="display:flex;align-items:center;margin-bottom:14px">
+      <h4 style="font-family:var(--font-display);font-size:12px;color:var(--txt2);letter-spacing:2px;flex:1">⊡ BRAINSTORM PROMPT</h4>
+      <button onclick="bsClosePrompt()" style="background:none;border:none;color:var(--txt3);cursor:pointer;font-size:14px">✕</button>
+    </div>
+    <div style="font-size:9px;color:var(--txt3);margin-bottom:8px;letter-spacing:1px">Copy this into a new Claude chat. Replace [TOPIC] with what you want to explore.</div>
+    <textarea id="bs-prompt-text" readonly style="flex:1;min-height:280px;background:var(--panel2);border:1px solid var(--border);color:var(--txt);font-family:var(--font-ui);font-size:10px;padding:12px;border-radius:2px;outline:none;resize:none;line-height:1.7">SULLY.AI BRAINSTORM SESSION
+
+I'm working on Sully.AI — an AI rally coaching app for EA Sports WRC. Python/PyQt6 desktop app. Key stack: UDP telemetry port 20778, pyqtgraph, Supabase, multi-AI (Gemini/Claude/Ollama).
+
+I want to brainstorm [TOPIC]. At the end of our discussion, give me a JSON array I can paste into my brainstorm board using this exact format:
+
+[
+  {"type":"idea","title":"Short title","notes":"One sentence detail","link":""},
+  {"type":"feature","title":"Feature name","notes":"What it does","link":"roadmap"}
+]
+
+Valid types: idea, feature, bug, ui, note
+Valid links (optional): dashboard, bugs, features, roadmap, changelog, decisions, cleanup
+
+Keep titles under 5 words. Notes under 15 words. Be generous with nodes — better to have more and prune than miss something.</textarea>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button onclick="bsClosePrompt()" style="flex:1;padding:8px;background:var(--panel2);border:1px solid var(--border2);color:var(--txt);font-family:var(--font-ui);font-size:9px;cursor:pointer;border-radius:2px;letter-spacing:1px">CLOSE</button>
+      <button onclick="bsCopyPrompt()" id="bs-prompt-copy-btn" style="flex:2;padding:8px;background:var(--accent3);border:1px solid var(--accent);color:var(--accent);font-family:var(--font-ui);font-size:9px;font-weight:700;cursor:pointer;border-radius:2px;letter-spacing:1px">📋 COPY PROMPT</button>
     </div>
   </div>
 </div>
