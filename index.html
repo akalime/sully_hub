@@ -590,6 +590,20 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
   #bottom-nav { z-index: 600; }
 }
 
+
+/* ── EXPORT MODAL ── */
+#export-overlay { position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:2000; }
+#export-overlay.show { display:flex; }
+#export-modal { background:var(--panel);border:1px solid var(--border2);width:680px;max-width:94vw;max-height:85vh;display:flex;flex-direction:column;border-radius:4px;overflow:hidden; }
+#export-header { padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px; }
+#export-header h3 { font-family:var(--font-display);font-size:13px;font-weight:700;color:var(--purple);letter-spacing:2px;flex:1; }
+#export-tabs { display:flex;gap:0;border-bottom:1px solid var(--border);flex-shrink:0; }
+.exp-tab { padding:8px 16px;font-size:9px;letter-spacing:1px;cursor:pointer;font-family:var(--font-ui);color:var(--txt3);border-bottom:2px solid transparent;background:none;border-top:none;border-left:none;border-right:none;transition:all .1s; }
+.exp-tab.active { color:var(--purple);border-bottom-color:var(--purple); }
+#export-content { flex:1;overflow:auto;padding:16px; }
+#export-content pre { font-family:var(--font-ui);font-size:10px;color:var(--txt);line-height:1.6;white-space:pre-wrap;word-break:break-word; }
+#export-footer { padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end; }
+
 </style>
 </head>
 <body>
@@ -697,6 +711,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
       <div class="tb-title" id="tb-title">Dashboard</div>
       <div class="tb-spacer"></div>
       <input id="search-box" placeholder="Search everything..." oninput="globalSearch(this.value)">
+      <button class="tb-btn" onclick="exportSession()" style="border-color:var(--purple);color:var(--purple)">⬇ EXPORT</button>
       <button class="tb-btn" onclick="openAddModal()">+ ADD ITEM</button>
     </div>
 
@@ -2780,6 +2795,209 @@ document.addEventListener('keydown', e => {
 });
 
 
+
+// ══════════════════════════════════════════════════════════
+// SESSION EXPORT
+// ══════════════════════════════════════════════════════════
+
+let _exportCache = { md: '', json: '' };
+let _exportTab = 'md';
+
+async function exportSession() {
+  document.getElementById('export-pre').textContent = 'Building export...';
+  document.getElementById('export-overlay').classList.add('show');
+
+  let bsNodes = [], bsEdges = [];
+  try {
+    const { data } = await supa.from('hub_brainstorm').select('data').eq('id', 1).maybeSingle();
+    if (data && data.data) {
+      const parsed = JSON.parse(data.data);
+      bsNodes = parsed.nodes || [];
+      bsEdges = parsed.edges || [];
+    }
+  } catch(e) {}
+
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+  const timeStr = now.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+
+  const openBugs = BUGS.filter(function(b) { return b.status === 'open'; });
+  const allFeats = FEATURES.flatMap(function(g) { return g.items; });
+
+  const stats = {
+    openBugs: openBugs.length,
+    criticalBugs: openBugs.filter(function(b){ return b.severity==='critical'; }).length,
+    tasksTotal: TASKS.length,
+    tasksDone: TASKS.filter(function(t){ return t.done; }).length,
+    featuresWorking: allFeats.filter(function(f){ return f.status==='working'; }).length,
+    featuresBroken:  allFeats.filter(function(f){ return f.status==='broken'; }).length,
+    brainstormNodes: bsNodes.length
+  };
+
+  // ── JSON ──────────────────────────────────────────────
+  const jsonData = {
+    exported: dateStr + ' ' + timeStr,
+    project: 'Sully.AI',
+    stats: stats,
+    openBugs: openBugs.map(function(b) {
+      return { id:b.id, severity:b.severity, title:b.title, file:b.file, desc:b.desc, fix:b.fix };
+    }),
+    tasks: TASKS.map(function(t) {
+      return { id:t.id, sprint:t.sprint, title:t.title, file:t.file, desc:t.desc, done:t.done };
+    }),
+    features: (function() {
+      var out = {};
+      FEATURES.forEach(function(g) {
+        out[g.group] = {};
+        ['working','broken','partial','planned','retired'].forEach(function(s) {
+          var items = g.items.filter(function(f){ return f.status===s; }).map(function(f){ return f.name; });
+          if (items.length) out[g.group][s] = items;
+        });
+      });
+      return out;
+    })(),
+    brainstorm: {
+      nodes: bsNodes.map(function(n) {
+        return { id:n.id, type:n.type, title:n.title, notes:n.notes||'', link:n.link||'', htmlName:n.htmlName||null };
+      }),
+      edges: bsEdges.map(function(e) {
+        return { from: (bsNodes[e.from]||{}).title||e.from, to: (bsNodes[e.to]||{}).title||e.to, label:e.label||'' };
+      })
+    }
+  };
+
+  // ── Markdown ──────────────────────────────────────────
+  var nl = '\n';
+  var md = '';
+  md += '# SULLY.AI — SESSION EXPORT' + nl;
+  md += '**Exported:** ' + dateStr + ' at ' + timeStr + nl + nl;
+  md += '---' + nl + nl;
+  md += '## STATS' + nl;
+  md += '| Metric | Value |' + nl + '|--------|-------|' + nl;
+  md += '| Open bugs | ' + stats.openBugs + ' |' + nl;
+  md += '| Critical bugs | ' + stats.criticalBugs + ' |' + nl;
+  md += '| Tasks total | ' + stats.tasksTotal + ' |' + nl;
+  md += '| Tasks done | ' + stats.tasksDone + ' |' + nl;
+  md += '| Features working | ' + stats.featuresWorking + ' |' + nl;
+  md += '| Features broken | ' + stats.featuresBroken + ' |' + nl;
+  md += '| Brainstorm nodes | ' + stats.brainstormNodes + ' |' + nl + nl;
+
+  md += '---' + nl + nl + '## OPEN BUGS (' + openBugs.length + ')' + nl + nl;
+  if (openBugs.length === 0) {
+    md += '_No open bugs_ ' + nl + nl;
+  } else {
+    openBugs.forEach(function(b) {
+      var dot = b.severity === 'critical' ? '🔴' : b.severity === 'significant' ? '🟡' : '🟠';
+      md += '### ' + dot + ' #' + b.id + ' — ' + b.title + nl;
+      md += '- **Severity:** ' + b.severity.toUpperCase() + nl;
+      md += '- **File:** ' + b.file + nl;
+      md += '- **Description:** ' + b.desc + nl;
+      md += '- **Fix:** ' + b.fix + nl + nl;
+    });
+  }
+
+  md += '---' + nl + nl + '## ROADMAP TASKS' + nl + nl;
+  var sprints = [...new Set(TASKS.map(function(t){ return t.sprint; }))].sort(function(a,b){ return a-b; });
+  sprints.forEach(function(s) {
+    var tasks = TASKS.filter(function(t){ return t.sprint===s; });
+    var ref = tasks[0];
+    var done = tasks.filter(function(t){ return t.done; }).length;
+    md += '### ' + ref.sprintLabel + ' — ' + ref.sprintTitle + nl;
+    md += '_' + done + '/' + tasks.length + ' done_' + nl + nl;
+    tasks.forEach(function(t) {
+      md += '- [' + (t.done ? 'x' : ' ') + '] **' + t.title + '**';
+      if (t.file) md += ' `' + t.file + '`';
+      md += nl;
+      if (t.desc) md += '  ' + t.desc + nl;
+    });
+    md += nl;
+  });
+
+  md += '---' + nl + nl + '## FEATURE STATUS' + nl + nl;
+  FEATURES.forEach(function(g) {
+    var broken  = g.items.filter(function(f){ return f.status==='broken'; });
+    var partial = g.items.filter(function(f){ return f.status==='partial'; });
+    var working = g.items.filter(function(f){ return f.status==='working'; });
+    var planned = g.items.filter(function(f){ return f.status==='planned'; });
+    md += '### ' + g.group + nl;
+    if (working.length) md += '✅ **Working:** ' + working.map(function(f){ return f.name; }).join(', ') + nl;
+    if (broken.length)  md += '❌ **Broken:** '  + broken.map(function(f){ return f.name; }).join(', ') + nl;
+    if (partial.length) md += '⚠️ **Partial:** ' + partial.map(function(f){ return f.name; }).join(', ') + nl;
+    if (planned.length) md += '🔲 **Planned:** ' + planned.map(function(f){ return f.name; }).join(', ') + nl;
+    md += nl;
+  });
+
+  md += '---' + nl + nl + '## BRAINSTORM BOARD (' + bsNodes.length + ' nodes)' + nl + nl;
+  if (bsNodes.length === 0) {
+    md += '_Board is empty_' + nl + nl;
+  } else {
+    var byType = {};
+    bsNodes.forEach(function(n) {
+      if (!byType[n.type]) byType[n.type] = [];
+      byType[n.type].push(n);
+    });
+    Object.entries(byType).forEach(function(entry) {
+      var type = entry[0], nodes = entry[1];
+      md += '### ' + type.toUpperCase() + nl;
+      nodes.forEach(function(n) {
+        md += '- **' + n.title + '**';
+        if (n.notes) md += ' — ' + n.notes;
+        if (n.link)  md += ' _(links to: ' + n.link + ')_';
+        if (n.htmlName) md += ' _(HTML: ' + n.htmlName + ')_';
+        md += nl;
+      });
+      md += nl;
+    });
+    if (bsEdges.length) {
+      md += '### CONNECTIONS' + nl;
+      bsEdges.forEach(function(e) {
+        var label = e.label ? ' (' + e.label + ')' : '';
+        md += '- ' + ((bsNodes[e.from]||{}).title||e.from) + ' → ' + ((bsNodes[e.to]||{}).title||e.to) + label + nl;
+      });
+      md += nl;
+    }
+  }
+
+  md += '---' + nl + '_Drop this file into Claude to continue your session with full context._' + nl;
+
+  _exportCache = { md: md, json: JSON.stringify(jsonData, null, 2) };
+  _exportTab = 'md';
+  document.querySelectorAll('.exp-tab').forEach(function(t){ t.classList.remove('active'); });
+  document.querySelector('.exp-tab').classList.add('active');
+  document.getElementById('export-pre').textContent = md;
+}
+
+
+function switchExpTab(tab, btn) {
+  _exportTab = tab;
+  document.querySelectorAll('.exp-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('export-pre').textContent = _exportCache[tab] || '';
+}
+
+function closeExport() {
+  document.getElementById('export-overlay').classList.remove('show');
+}
+
+function copyExport() {
+  const text = _exportCache[_exportTab] || '';
+  navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard', 'success'));
+}
+
+function downloadExport() {
+  const text = _exportCache[_exportTab] || '';
+  const ext  = _exportTab === 'json' ? 'json' : 'md';
+  const name = `sully-session-${new Date().toISOString().slice(0,10)}.${ext}`;
+  const blob = new Blob([text], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast('Downloaded: ' + name, 'success');
+}
+
+
 // ══════════════════════════════════════════════════════════
 // SUPABASE DATA LAYER
 // ══════════════════════════════════════════════════════════
@@ -3088,5 +3306,25 @@ document.addEventListener('DOMContentLoaded', () => {
   <button class="bn-item" onclick="nav('brainstorm')" data-view="brainstorm"><span class="bn-icon">◉</span><span class="bn-label">Brainstorm</span></button>
   <button class="bn-item" onclick="nav('renders')" data-view="renders"><span class="bn-icon">⬡</span><span class="bn-label">Renders</span></button>
 </div>
+
+<!-- EXPORT MODAL -->
+<div id="export-overlay" onclick="if(event.target===this)closeExport()">
+  <div id="export-modal">
+    <div id="export-header">
+      <h3>⬇ SESSION EXPORT</h3>
+      <button onclick="closeExport()" style="background:none;border:none;color:var(--txt3);cursor:pointer;font-size:14px">✕</button>
+    </div>
+    <div id="export-tabs">
+      <button class="exp-tab active" onclick="switchExpTab('md',this)">MARKDOWN</button>
+      <button class="exp-tab" onclick="switchExpTab('json',this)">JSON</button>
+    </div>
+    <div id="export-content"><pre id="export-pre"></pre></div>
+    <div id="export-footer">
+      <button class="modal-btn cancel" onclick="copyExport()">📋 COPY</button>
+      <button class="modal-btn save" style="background:var(--purple)" onclick="downloadExport()">⬇ DOWNLOAD</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
