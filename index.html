@@ -1,0 +1,1363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SULLY.AI — Project Hub</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap');
+
+/* ── LOGIN GATE ── */
+#login-gate{position:fixed;inset:0;background:var(--bg);z-index:2000;display:flex;align-items:center;justify-content:center;flex-direction:column}
+#login-gate.hidden{display:none}
+.lg-box{width:360px;background:var(--panel);border:1px solid var(--border2);border-radius:4px;overflow:hidden}
+.lg-header{padding:24px 24px 16px;border-bottom:1px solid var(--border)}
+.lg-logo{font-family:var(--font-display);font-size:20px;font-weight:800;color:var(--accent);letter-spacing:3px}
+.lg-sub{font-size:9px;color:var(--txt3);letter-spacing:2px;margin-top:4px}
+.lg-body{padding:20px 24px;display:flex;flex-direction:column;gap:14px}
+.lg-field{display:flex;flex-direction:column;gap:5px}
+.lg-label{font-size:9px;color:var(--txt3);letter-spacing:2px}
+.lg-input{background:var(--panel2);border:1px solid var(--border);color:var(--white);font-family:var(--font-ui);font-size:11px;padding:8px 12px;outline:none;border-radius:2px;width:100%;transition:border-color .1s}
+.lg-input:focus{border-color:var(--accent3)}
+.lg-input::placeholder{color:var(--txt3)}
+.lg-btn{background:var(--accent);border:none;color:var(--bg);font-family:var(--font-ui);font-size:10px;font-weight:700;padding:10px;cursor:pointer;border-radius:2px;letter-spacing:2px;width:100%;transition:background .1s}
+.lg-btn:hover{background:#00e0ff}
+.lg-btn:disabled{background:var(--accent3);color:var(--txt3);cursor:not-allowed}
+.lg-err{font-size:10px;color:var(--red);padding:6px 10px;background:var(--red2);border-radius:2px;display:none}
+.lg-err.show{display:block}
+.lg-footer{padding:12px 24px;border-top:1px solid var(--border);font-size:9px;color:var(--txt3);text-align:center}
+.lg-switch{color:var(--accent);cursor:pointer;text-decoration:underline}
+.lg-spinner{display:inline-block;width:12px;height:12px;border:2px solid var(--bg);border-top-color:transparent;border-radius:50%;animation:spin .6s linear infinite;margin-right:6px;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090c;--panel:#0b0f14;--panel2:#0f1419;--border:#161e28;--border2:#1e2d3d;
+  --accent:#00c8f0;--accent2:#00c8f018;--accent3:#00c8f040;
+  --green:#00e87a;--green2:#00e87a18;
+  --red:#ff3548;--red2:#ff354818;
+  --amber:#ffb020;--amber2:#ffb02018;
+  --purple:#a855f7;--purple2:#a855f718;
+  --blue:#3b82f6;--blue2:#3b82f618;
+  --txt:#b8ccd8;--txt2:#6888a0;--txt3:#3a5060;--white:#eef6ff;
+  --font-ui:'Space Mono',monospace;
+  --font-display:'Syne',sans-serif;
+}
+
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font-family:var(--font-ui);font-size:12px}
+
+/* ── LAYOUT ── */
+#app{display:flex;height:100vh;overflow:hidden}
+#sidebar{width:220px;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+#topbar{height:48px;background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:12px;flex-shrink:0}
+#content{flex:1;overflow:hidden;display:flex;flex-direction:column}
+
+/* ── SIDEBAR ── */
+.sb-header{padding:16px 14px 10px;border-bottom:1px solid var(--border)}
+.sb-logo{font-family:var(--font-display);font-size:16px;font-weight:800;color:var(--accent);letter-spacing:2px}
+.sb-sub{font-size:9px;color:var(--txt3);letter-spacing:2px;margin-top:2px}
+.sb-section{padding:8px 0 4px 14px;font-size:8px;color:var(--txt3);letter-spacing:2px}
+.sb-item{display:flex;align-items:center;gap:8px;padding:7px 14px;cursor:pointer;border-left:2px solid transparent;transition:all .1s}
+.sb-item:hover{background:var(--accent2);color:var(--white)}
+.sb-item.active{background:var(--accent2);border-left-color:var(--accent);color:var(--white)}
+.sb-item .sb-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.sb-item .sb-label{font-size:10px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-item .sb-count{font-size:9px;color:var(--txt3);background:var(--border);padding:1px 5px;border-radius:2px}
+.sb-item.active .sb-count{background:var(--accent3);color:var(--accent)}
+
+/* ── TOPBAR ── */
+.tb-title{font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--white)}
+.tb-spacer{flex:1}
+#search-box{background:var(--panel2);border:1px solid var(--border);color:var(--txt);font-family:var(--font-ui);font-size:10px;padding:5px 10px;outline:none;width:220px;border-radius:2px}
+#search-box:focus{border-color:var(--accent3)}
+#search-box::placeholder{color:var(--txt3)}
+.tb-btn{background:var(--accent3);border:1px solid var(--accent);color:var(--accent);font-family:var(--font-ui);font-size:9px;padding:5px 12px;cursor:pointer;letter-spacing:1px;border-radius:2px;transition:all .1s}
+.tb-btn:hover{background:var(--accent);color:var(--bg)}
+
+/* ── VIEWS ── */
+.view{display:none;flex:1;overflow:hidden;flex-direction:column}
+.view.active{display:flex}
+
+/* ── DASHBOARD ── */
+#dash-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);flex-shrink:0}
+.stat-card{background:var(--panel);padding:16px;display:flex;flex-direction:column;gap:4px}
+.stat-card .sc-val{font-family:var(--font-display);font-size:28px;font-weight:800;line-height:1}
+.stat-card .sc-label{font-size:9px;color:var(--txt3);letter-spacing:2px}
+.stat-card .sc-sub{font-size:10px;color:var(--txt2);margin-top:2px}
+#dash-body{flex:1;overflow:auto;display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border)}
+.dash-panel{background:var(--panel);overflow:auto;padding:14px}
+.dash-panel h3{font-family:var(--font-display);font-size:11px;font-weight:700;color:var(--txt2);letter-spacing:2px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+
+/* ── BUG ROW ── */
+.bug-row{display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);cursor:pointer}
+.bug-row:last-child{border-bottom:none}
+.bug-row:hover{background:var(--panel2);margin:0 -14px;padding:7px 14px}
+.severity{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.sev-critical{background:var(--red)}
+.sev-significant{background:var(--amber)}
+.sev-minor{background:var(--txt2)}
+.bug-title{font-size:10px;color:var(--white);line-height:1.4;flex:1}
+.bug-file{font-size:9px;color:var(--txt3);font-family:var(--font-ui);margin-top:2px}
+
+/* ── FEATURE ROW ── */
+.feat-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)}
+.feat-row:last-child{border-bottom:none}
+.feat-status{font-size:8px;padding:2px 6px;border-radius:2px;letter-spacing:1px;flex-shrink:0;min-width:64px;text-align:center}
+.fs-working{background:var(--green2);color:var(--green)}
+.fs-broken{background:var(--red2);color:var(--red)}
+.fs-partial{background:var(--amber2);color:var(--amber)}
+.fs-planned{background:var(--blue2);color:var(--blue)}
+.fs-retired{background:var(--border);color:var(--txt3)}
+.feat-name{font-size:10px;color:var(--txt);flex:1}
+.feat-note{font-size:9px;color:var(--txt3);text-align:right;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ── ROADMAP ── */
+#roadmap-body{flex:1;overflow:auto;padding:14px}
+.sprint{margin-bottom:20px}
+.sprint-header{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.sprint-tag{font-size:8px;padding:2px 8px;border-radius:2px;letter-spacing:1.5px;font-weight:700}
+.sprint-title{font-family:var(--font-display);font-size:13px;font-weight:700;color:var(--white)}
+.sprint-sub{font-size:9px;color:var(--txt3);font-style:italic}
+.task-item{display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border:1px solid var(--border);border-radius:3px;margin-bottom:6px;cursor:pointer;transition:all .1s}
+.task-item:hover{border-color:var(--border2);background:var(--panel2)}
+.task-item.done{opacity:.4}
+.task-check{width:14px;height:14px;border:1px solid var(--border2);border-radius:2px;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--green)}
+.task-check.checked{background:var(--green2);border-color:var(--green);color:var(--green)}
+.task-title{font-size:10px;color:var(--white);flex:1;line-height:1.4}
+.task-file{font-size:9px;color:var(--accent);font-family:var(--font-ui);margin-top:2px}
+.task-desc{font-size:9px;color:var(--txt3);margin-top:3px;line-height:1.5}
+
+/* ── BUGS VIEW ── */
+#bugs-body{flex:1;overflow:auto}
+.bug-card{border-bottom:1px solid var(--border);padding:12px 16px;cursor:pointer;transition:background .1s}
+.bug-card:hover{background:var(--panel2)}
+.bug-card.expanded{background:var(--panel2)}
+.bc-header{display:flex;align-items:center;gap:8px}
+.bc-num{font-size:9px;color:var(--txt3);width:24px;flex-shrink:0}
+.bc-sev{font-size:8px;padding:2px 7px;border-radius:2px;letter-spacing:1px;flex-shrink:0}
+.bc-sev.critical{background:var(--red2);color:var(--red)}
+.bc-sev.significant{background:var(--amber2);color:var(--amber)}
+.bc-sev.minor{background:var(--border);color:var(--txt2)}
+.bc-title{font-size:11px;color:var(--white);flex:1}
+.bc-status{font-size:8px;padding:2px 7px;border-radius:2px;letter-spacing:1px}
+.bc-status.open{background:var(--red2);color:var(--red)}
+.bc-status.fixed{background:var(--green2);color:var(--green)}
+.bc-status.wontfix{background:var(--border);color:var(--txt3)}
+.bc-body{margin-top:10px;padding-left:32px;display:none}
+.bc-body.show{display:block}
+.bc-file{font-size:9px;color:var(--accent);font-family:var(--font-ui);margin-bottom:4px}
+.bc-desc{font-size:10px;color:var(--txt2);line-height:1.6;margin-bottom:6px}
+.bc-fix-label{font-size:8px;color:var(--green);letter-spacing:1px;margin-bottom:3px}
+.bc-actions{display:flex;gap:6px;margin-top:8px}
+.bc-btn{font-size:8px;padding:3px 10px;border-radius:2px;cursor:pointer;font-family:var(--font-ui);letter-spacing:1px;border:none;transition:all .1s}
+
+/* ── FEATURES VIEW ── */
+#features-body{flex:1;overflow:auto}
+.feat-group{border-bottom:1px solid var(--border)}
+.feat-group-header{padding:10px 16px;display:flex;align-items:center;gap:8px;cursor:pointer;background:var(--panel)}
+.feat-group-header:hover{background:var(--panel2)}
+.fgh-title{font-family:var(--font-display);font-size:11px;font-weight:700;color:var(--white);flex:1}
+.fgh-stats{display:flex;gap:6px}
+.fgh-pill{font-size:8px;padding:2px 6px;border-radius:2px}
+.feat-group-body{display:none;padding:0 16px 8px}
+.feat-group-body.open{display:block}
+.feat-item{display:flex;align-items:flex-start;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)}
+.feat-item:last-child{border-bottom:none}
+.fi-status{font-size:8px;padding:2px 7px;border-radius:2px;letter-spacing:1px;flex-shrink:0;min-width:60px;text-align:center;margin-top:1px}
+.fi-name{font-size:10px;color:var(--white);flex:1}
+.fi-note{font-size:9px;color:var(--txt3);margin-top:2px}
+.fi-actions{display:flex;gap:4px;flex-shrink:0}
+.fi-btn{font-size:8px;padding:2px 7px;background:var(--border);border:none;color:var(--txt2);cursor:pointer;font-family:var(--font-ui);border-radius:2px}
+.fi-btn:hover{background:var(--border2);color:var(--white)}
+
+/* ── CHANGELOG ── */
+#changelog-body{flex:1;overflow:auto;padding:14px 16px}
+.cl-entry{margin-bottom:20px}
+.cl-version{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.cl-ver-tag{font-family:var(--font-display);font-size:13px;font-weight:800;color:var(--accent)}
+.cl-ver-date{font-size:9px;color:var(--txt3)}
+.cl-ver-label{font-size:9px;color:var(--txt2);font-style:italic}
+.cl-section{margin-bottom:8px}
+.cl-section-title{font-size:8px;color:var(--txt3);letter-spacing:2px;margin-bottom:4px}
+.cl-item{font-size:10px;color:var(--txt);padding:3px 0 3px 12px;border-left:2px solid var(--border);line-height:1.5}
+.cl-item.added{border-left-color:var(--green)}
+.cl-item.changed{border-left-color:var(--amber)}
+.cl-item.fixed{border-left-color:var(--accent)}
+.cl-item.deleted{border-left-color:var(--red)}
+
+/* ── EDITOR MODAL ── */
+#modal-overlay{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:1000}
+#modal-overlay.show{display:flex}
+#modal{background:var(--panel);border:1px solid var(--border2);width:600px;max-height:80vh;display:flex;flex-direction:column;border-radius:4px;overflow:hidden}
+#modal-header{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+#modal-title{font-family:var(--font-display);font-size:13px;font-weight:700;color:var(--white);flex:1}
+#modal-close{background:none;border:none;color:var(--txt3);cursor:pointer;font-size:14px;padding:0 4px}
+#modal-close:hover{color:var(--white)}
+#modal-body{flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-label{font-size:9px;color:var(--txt3);letter-spacing:2px}
+.form-input,.form-select,.form-textarea{background:var(--panel2);border:1px solid var(--border);color:var(--white);font-family:var(--font-ui);font-size:11px;padding:7px 10px;outline:none;border-radius:2px;width:100%}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--accent3)}
+.form-textarea{resize:vertical;min-height:80px;line-height:1.5}
+.form-select option{background:var(--panel2)}
+#modal-footer{padding:12px 16px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+.modal-btn{font-size:9px;padding:6px 16px;border-radius:2px;cursor:pointer;font-family:var(--font-ui);letter-spacing:1px;border:none;transition:all .1s}
+.modal-btn.cancel{background:var(--border);color:var(--txt2)}
+.modal-btn.cancel:hover{background:var(--border2);color:var(--white)}
+.modal-btn.save{background:var(--accent);color:var(--bg)}
+.modal-btn.save:hover{background:#00e0ff}
+.modal-btn.danger{background:var(--red2);color:var(--red);border:1px solid var(--red)}
+.modal-btn.danger:hover{background:var(--red);color:var(--white)}
+
+/* ── FILTER BAR ── */
+.filter-bar{display:flex;gap:6px;padding:8px 16px;border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;align-items:center}
+.filter-btn{font-size:8px;padding:3px 10px;border-radius:2px;cursor:pointer;font-family:var(--font-ui);letter-spacing:1px;border:1px solid var(--border);background:transparent;color:var(--txt3);transition:all .1s}
+.filter-btn:hover{border-color:var(--border2);color:var(--txt)}
+.filter-btn.active{background:var(--accent2);border-color:var(--accent);color:var(--accent)}
+.filter-spacer{flex:1}
+.filter-count{font-size:9px;color:var(--txt3)}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:20px;right:20px;background:var(--panel);border:1px solid var(--accent3);color:var(--accent);font-size:10px;padding:8px 14px;border-radius:3px;z-index:9999;opacity:0;transition:opacity .2s;pointer-events:none}
+#toast.show{opacity:1}
+
+/* ── DOCS VIEW ── */
+#docs-grid{flex:1;overflow:auto;display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);align-content:start}
+.doc-card{background:var(--panel);padding:14px;cursor:pointer;transition:background .1s;display:flex;flex-direction:column;gap:6px}
+.doc-card:hover{background:var(--panel2)}
+.dc-tag{font-size:8px;padding:2px 7px;border-radius:2px;letter-spacing:1px;width:fit-content}
+.dc-title{font-family:var(--font-display);font-size:12px;font-weight:700;color:var(--white)}
+.dc-desc{font-size:9px;color:var(--txt3);line-height:1.5}
+.dc-meta{font-size:9px;color:var(--txt3)}
+
+/* ── DOC READER ── */
+#doc-reader{position:fixed;inset:0;background:var(--panel);z-index:500;display:none;flex-direction:column}
+#doc-reader.show{display:flex}
+#dr-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0}
+#dr-back{background:none;border:1px solid var(--border);color:var(--txt2);font-family:var(--font-ui);font-size:9px;padding:4px 12px;cursor:pointer;letter-spacing:1px;border-radius:2px}
+#dr-back:hover{border-color:var(--border2);color:var(--white)}
+#dr-title{font-family:var(--font-display);font-size:14px;font-weight:800;color:var(--white);flex:1}
+#dr-body{flex:1;overflow:auto;padding:20px 40px;max-width:860px;margin:0 auto;width:100%}
+#dr-body h1{font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--accent);margin-bottom:8px;margin-top:24px}
+#dr-body h2{font-family:var(--font-display);font-size:15px;font-weight:700;color:var(--white);margin-bottom:6px;margin-top:18px;border-bottom:1px solid var(--border);padding-bottom:4px}
+#dr-body h3{font-size:12px;font-weight:700;color:var(--txt2);margin-bottom:4px;margin-top:12px;letter-spacing:1px}
+#dr-body p{font-size:11px;color:var(--txt);line-height:1.7;margin-bottom:8px}
+#dr-body pre,#dr-body code{font-family:var(--font-ui);font-size:10px;background:var(--panel2);border:1px solid var(--border);padding:10px 14px;border-radius:3px;overflow-x:auto;color:var(--accent);display:block;margin-bottom:8px;white-space:pre-wrap}
+#dr-body li{font-size:11px;color:var(--txt);line-height:1.7;margin-left:20px;list-style:disc}
+#dr-body ul,#dr-body ol{margin-bottom:8px}
+#dr-body table{width:100%;border-collapse:collapse;margin-bottom:12px;font-size:10px}
+#dr-body th{background:var(--panel2);color:var(--txt2);padding:6px 10px;text-align:left;border:1px solid var(--border);font-size:9px;letter-spacing:1px}
+#dr-body td{padding:6px 10px;border:1px solid var(--border);color:var(--txt);vertical-align:top}
+#dr-body tr:nth-child(even) td{background:var(--panel2)}
+#dr-body blockquote{border-left:3px solid var(--accent);padding:6px 12px;background:var(--accent2);margin-bottom:8px;font-style:italic;color:var(--txt2)}
+#dr-body a{color:var(--accent);text-decoration:none}
+#dr-body hr{border:none;border-bottom:1px solid var(--border);margin:16px 0}
+</style>
+</head>
+<body>
+
+<!-- LOGIN GATE -->
+<div id="login-gate">
+  <div class="lg-box">
+    <div class="lg-header">
+      <div class="lg-logo">SULLY.AI</div>
+      <div class="lg-sub">PROJECT HUB · INTERNAL</div>
+    </div>
+    <div class="lg-body">
+      <div class="lg-err" id="lg-err"></div>
+      <div class="lg-field">
+        <label class="lg-label">EMAIL</label>
+        <input class="lg-input" id="lg-email" type="email" placeholder="your@email.com" autocomplete="email">
+      </div>
+      <div class="lg-field">
+        <label class="lg-label">PASSWORD</label>
+        <input class="lg-input" id="lg-password" type="password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="lg-btn" id="lg-submit" onclick="loginSubmit()">SIGN IN</button>
+    </div>
+    <div class="lg-footer">
+      Don't have an account? <span class="lg-switch" onclick="toggleRegister()">Register</span>
+    </div>
+  </div>
+  <div style="margin-top:16px;font-size:9px;color:var(--txt3)">Sully AI · Internal Tool · Not for distribution</div>
+</div>
+
+<div id="app" style="display:none">
+
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div class="sb-header">
+      <div class="sb-logo">SULLY.AI</div>
+      <div class="sb-sub">PROJECT HUB</div>
+    </div>
+    <div style="overflow-y:auto;flex:1">
+      <div class="sb-section">OVERVIEW</div>
+      <div class="sb-item active" onclick="nav('dashboard')">
+        <div class="sb-dot" style="background:var(--accent)"></div>
+        <span class="sb-label">Dashboard</span>
+      </div>
+      <div class="sb-item" onclick="nav('docs')">
+        <div class="sb-dot" style="background:var(--txt2)"></div>
+        <span class="sb-label">All Documents</span>
+        <span class="sb-count">15</span>
+      </div>
+
+      <div class="sb-section">WORK ITEMS</div>
+      <div class="sb-item" onclick="nav('bugs')">
+        <div class="sb-dot" style="background:var(--red)"></div>
+        <span class="sb-label">Known Bugs</span>
+        <span class="sb-count" id="sb-bug-count">12</span>
+      </div>
+      <div class="sb-item" onclick="nav('features')">
+        <div class="sb-dot" style="background:var(--green)"></div>
+        <span class="sb-label">Feature Status</span>
+        <span class="sb-count">52</span>
+      </div>
+      <div class="sb-item" onclick="nav('roadmap')">
+        <div class="sb-dot" style="background:var(--amber)"></div>
+        <span class="sb-label">Roadmap</span>
+        <span class="sb-count" id="sb-task-count">22</span>
+      </div>
+
+      <div class="sb-section">PROJECT</div>
+      <div class="sb-item" onclick="nav('changelog')">
+        <div class="sb-dot" style="background:var(--purple)"></div>
+        <span class="sb-label">Changelog</span>
+      </div>
+      <div class="sb-item" onclick="nav('decisions')">
+        <div class="sb-dot" style="background:var(--blue)"></div>
+        <span class="sb-label">Decisions</span>
+      </div>
+      <div class="sb-item" onclick="nav('cleanup')">
+        <div class="sb-dot" style="background:var(--red)"></div>
+        <span class="sb-label">Cleanup List</span>
+      </div>
+    </div>
+
+    <div style="padding:12px 14px;border-top:1px solid var(--border)">
+      <div style="font-size:9px;color:var(--txt3);margin-bottom:4px">v1.0.4 · March 2026</div>
+      <div style="display:flex;gap:4px">
+        <div style="flex:1;height:3px;background:var(--green);border-radius:2px" title="Working"></div>
+        <div style="width:30%;height:3px;background:var(--amber);border-radius:2px" title="Broken/Partial"></div>
+        <div style="width:20%;height:3px;background:var(--blue);border-radius:2px" title="Planned"></div>
+      </div>
+      <div style="font-size:8px;color:var(--txt3);margin-top:3px">~50% launch ready</div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div id="main">
+    <div id="topbar">
+      <div class="tb-title" id="tb-title">Dashboard</div>
+      <div class="tb-spacer"></div>
+      <input id="search-box" placeholder="Search everything..." oninput="globalSearch(this.value)">
+      <button class="tb-btn" onclick="openAddModal()">+ ADD ITEM</button>
+    </div>
+
+    <div id="content">
+
+      <!-- DASHBOARD -->
+      <div id="view-dashboard" class="view active">
+        <div id="dash-grid">
+          <div class="stat-card">
+            <div class="sc-val" style="color:var(--red)" id="stat-critical">2</div>
+            <div class="sc-label">CRITICAL BUGS</div>
+            <div class="sc-sub">Blocking launch</div>
+          </div>
+          <div class="stat-card">
+            <div class="sc-val" style="color:var(--amber)" id="stat-open">10</div>
+            <div class="sc-label">OPEN ISSUES</div>
+            <div class="sc-sub">Total known bugs</div>
+          </div>
+          <div class="stat-card">
+            <div class="sc-val" style="color:var(--green)" id="stat-working">28</div>
+            <div class="sc-label">FEATURES WORKING</div>
+            <div class="sc-sub">End-to-end</div>
+          </div>
+          <div class="stat-card">
+            <div class="sc-val" style="color:var(--accent)" id="stat-tasks">22</div>
+            <div class="sc-label">ROADMAP TASKS</div>
+            <div class="sc-sub" id="stat-tasks-done">0 done</div>
+          </div>
+        </div>
+        <div id="dash-body">
+          <div class="dash-panel">
+            <h3>🔴 CRITICAL BUGS</h3>
+            <div id="dash-critical-bugs"></div>
+          </div>
+          <div class="dash-panel">
+            <h3>🚨 SPRINT 1 — NEXT TASKS</h3>
+            <div id="dash-sprint1"></div>
+          </div>
+          <div class="dash-panel">
+            <h3>⚡ BROKEN FEATURES</h3>
+            <div id="dash-broken"></div>
+          </div>
+          <div class="dash-panel">
+            <h3>✅ RECENTLY WORKING</h3>
+            <div id="dash-working"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DOCS -->
+      <div id="view-docs" class="view">
+        <div id="docs-grid"></div>
+      </div>
+
+      <!-- BUGS -->
+      <div id="view-bugs" class="view">
+        <div class="filter-bar">
+          <button class="filter-btn active" onclick="filterBugs('all',this)">ALL</button>
+          <button class="filter-btn" onclick="filterBugs('critical',this)">🔴 CRITICAL</button>
+          <button class="filter-btn" onclick="filterBugs('significant',this)">🟡 SIGNIFICANT</button>
+          <button class="filter-btn" onclick="filterBugs('minor',this)">🟠 MINOR</button>
+          <button class="filter-btn" onclick="filterBugs('open',this)">OPEN</button>
+          <button class="filter-btn" onclick="filterBugs('fixed',this)">FIXED</button>
+          <div class="filter-spacer"></div>
+          <button class="tb-btn" onclick="openAddBug()">+ ADD BUG</button>
+        </div>
+        <div id="bugs-body"></div>
+      </div>
+
+      <!-- FEATURES -->
+      <div id="view-features" class="view">
+        <div class="filter-bar">
+          <button class="filter-btn active" onclick="filterFeats('all',this)">ALL</button>
+          <button class="filter-btn" onclick="filterFeats('working',this)">✅ WORKING</button>
+          <button class="filter-btn" onclick="filterFeats('broken',this)">❌ BROKEN</button>
+          <button class="filter-btn" onclick="filterFeats('partial',this)">⚠ PARTIAL</button>
+          <button class="filter-btn" onclick="filterFeats('planned',this)">🔲 PLANNED</button>
+          <button class="filter-btn" onclick="filterFeats('retired',this)">🗑 RETIRED</button>
+          <div class="filter-spacer"></div>
+          <span class="filter-count" id="feat-count">52 features</span>
+        </div>
+        <div id="features-body"></div>
+      </div>
+
+      <!-- ROADMAP -->
+      <div id="view-roadmap" class="view">
+        <div class="filter-bar">
+          <button class="filter-btn active" onclick="filterTasks('all',this)">ALL SPRINTS</button>
+          <button class="filter-btn" onclick="filterTasks('open',this)">OPEN</button>
+          <button class="filter-btn" onclick="filterTasks('done',this)">DONE</button>
+          <div class="filter-spacer"></div>
+          <span class="filter-count" id="task-count"></span>
+          <button class="tb-btn" onclick="openAddTask()">+ ADD TASK</button>
+        </div>
+        <div id="roadmap-body"></div>
+      </div>
+
+      <!-- CHANGELOG -->
+      <div id="view-changelog" class="view">
+        <div id="changelog-body"></div>
+      </div>
+
+      <!-- DECISIONS -->
+      <div id="view-decisions" class="view">
+        <div id="decisions-body" style="flex:1;overflow:auto;padding:14px 16px"></div>
+      </div>
+
+      <!-- CLEANUP -->
+      <div id="view-cleanup" class="view">
+        <div id="cleanup-body" style="flex:1;overflow:auto;padding:14px 16px"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- DOC READER -->
+<div id="doc-reader">
+  <div id="dr-header">
+    <button id="dr-back" onclick="closeDocReader()">← BACK</button>
+    <div id="dr-title"></div>
+  </div>
+  <div id="dr-body"></div>
+</div>
+
+<!-- MODAL -->
+<div id="modal-overlay">
+  <div id="modal">
+    <div id="modal-header">
+      <div id="modal-title">Add Item</div>
+      <button id="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modal-body"></div>
+    <div id="modal-footer">
+      <button class="modal-btn cancel" onclick="closeModal()">CANCEL</button>
+      <button class="modal-btn save" id="modal-save">SAVE</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+// DATA
+// ══════════════════════════════════════════════════════════
+
+const DOCS = [
+  {id:'readme',     tag:'OVERVIEW',    tagColor:'var(--accent)',  title:'README',               desc:'Project overview, setup instructions, feature list, AI backends, coaching modes.'},
+  {id:'architecture',tag:'TECHNICAL', tagColor:'var(--blue)',    title:'ARCHITECTURE',          desc:'Full data flow diagrams — UDP pipeline, AI pipeline, cloud/memory pipeline, UI structure.'},
+  {id:'feature_status',tag:'STATUS',  tagColor:'var(--green)',   title:'FEATURE STATUS',        desc:'Every feature with working/broken/planned status. 52 items across 8 categories.'},
+  {id:'known_bugs', tag:'BUGS',        tagColor:'var(--red)',    title:'KNOWN BUGS',            desc:'12 bugs with file + line references, severity, root cause, and fix instructions.'},
+  {id:'roadmap',    tag:'PLANNING',    tagColor:'var(--amber)',  title:'ROADMAP',               desc:'6 sprints prioritised. Sprint 1 critical fixes → launch polish. Future features.'},
+  {id:'changelog',  tag:'HISTORY',     tagColor:'var(--purple)', title:'CHANGELOG',             desc:'What changed in each version. v1.0.0 initial → v1.0.4 stage detection rebuild.'},
+  {id:'architecture2',tag:'DECISIONS',tagColor:'var(--blue)',   title:'DECISIONS',             desc:'Architectural decision records — the why behind UDP approach, AI backends, pricing.'},
+  {id:'dependencies',tag:'TECHNICAL', tagColor:'var(--blue)',   title:'DEPENDENCIES',          desc:'Full package inventory with usage context and install commands.'},
+  {id:'cleanup',    tag:'CLEANUP',     tagColor:'var(--red)',    title:'CLEANUP LIST',          desc:'~1000 lines of dead code. Safe to delete now vs needs checking vs refactor.'},
+  {id:'dead_code',  tag:'CLEANUP',     tagColor:'var(--red)',    title:'DEAD CODE',             desc:'Exact file and line confirmation of dead code. Methods, state vars, whole files.'},
+  {id:'file_tree',  tag:'TECHNICAL',   tagColor:'var(--blue)',  title:'FILE TREE',             desc:'Every file, what it does, what it connects to. Root, core/, engine/, ui/tabs/.'},
+  {id:'honest_review',tag:'REVIEW',   tagColor:'var(--amber)',  title:'HONEST REVIEW',         desc:'First-user perspective, no mercy. What would make them close it immediately vs what\'s good.'},
+  {id:'version_history',tag:'HISTORY',tagColor:'var(--purple)', title:'VERSION HISTORY',       desc:'Old monolithic project vs new modular architecture. Every structural change documented.'},
+  {id:'session_template',tag:'TEMPLATE',tagColor:'var(--txt2)', title:'SESSION BRIEF TEMPLATE',desc:'Fill in at the start of each dev session. Saves 20min of context reconstruction.'},
+  {id:'changelog_entry',tag:'TEMPLATE',tagColor:'var(--txt2)',  title:'CHANGELOG ENTRY',       desc:'Template for logging what changed at the end of each session.'},
+];
+
+const DOC_CONTENT = {
+  readme: `# SULLY.AI\n### AI Rally Coach for EA Sports WRC\n\nSully is a real-time AI coaching system that reads live telemetry from EA Sports WRC, records your runs, and gives you structured post-stage coaching from an AI that knows your history.\n\n## What It Does\n\n- Reads live telemetry via UDP from EA Sports WRC (custom packet, port 20778)\n- Records every run automatically to CSV with spatial downsampling\n- Identifies your stage exactly — Rally country + stage name via EA's own ID system\n- Debriefs you after every stage — 4-line structured coaching: worst sector, inconsistency, priority fix\n- Remembers your history — session count, form score, weaknesses, recurring mistakes via Supabase\n- Multiple coaching modes — Training, Race, Qualifying, Consistency, Setup, Rival, Mental Coach\n- Multiple AI backends — Gemini (fast/cloud), Claude (nuanced), Ollama (local/private)\n- Forensic telemetry tab — graph grid, GPS map with colour modes, sector analysis\n- WRC Academy — built-in knowledge base\n\n## AI Backends\n\n| Backend | Model | Best For |\n|---------|-------|----------|\n| Gemini | gemini-2.0-flash | Speed, daily use |\n| Claude | claude-haiku | Nuanced coaching |\n| Ollama | gemma3:latest | Privacy, offline |\n\n## Coaching Modes\n\n| Mode | Focus |\n|------|-------|\n| Training | Detailed technical breakdown |\n| Race | One fix, fast |\n| Qualifying | Single biggest time gain |\n| Consistency | Find the repeating mistake |\n| Setup | WRC-specific car setup changes |\n| Rival | vs personal best analysis |\n| Mental Coach | Psychological pattern analysis |`,
+  architecture: `# SULLY.AI — ARCHITECTURE\n\n## System Overview\n\n\`\`\`\nEA Sports WRC (game)\n        │\n        │ UDP packets (port 20778, custom1 structure)\n        ▼\n  UdpMonitor (engine/sully_engine.py)\n        │\n        ├─── status_signal(bool) ──────────────────► update_link_indicator()\n        ├─── live_data_signal(dict) ───────────────► update_live_tab()\n        └─── run_saved_signal(str) ────────────────► _on_run_saved(filepath)\n\`\`\`\n\n## Stage Detection\n\n\`\`\`\nUdpMonitor.run()\n    │\n    ├── parsed["LocationId"] → int\n    ├── parsed["RouteId"]    → int\n    ├── self._ids['locations'][loc_id]  → "RALLY CROATIA"\n    └── self._ids['routes'][route_id]   → "Montclar"\n\`\`\`\n\n## UDP Packet Structure (custom1, port 20778)\n\n| Offset | Field | Type | Notes |\n|--------|-------|------|-------|\n| 0 | PacketUid | ulong | |\n| 41 | Speed | float | m/s |\n| 197 | Throttle | float | 0-1 |\n| 201 | Brake | float | 0-1 |\n| 213 | Handbrake | float | 0-1 |\n| 221 | Distance | double | metres |\n| 256 | VehicleId | uint16 | |\n| 262 | LocationId | uint16 | Stage country |\n| 264 | RouteId | uint16 | Stage name |\n\n## AI Pipeline\n\n\`\`\`\nUser action (run loaded / send button / mode chip)\n        │\n        ▼\n  SullyWorker(QThread)\n        ├── _build_sys_prompt()    → mode-aware personality\n        ├── _build_memory_context() → session count, form, weaknesses\n        ├── GEMINI path  → genai.Client → generate_content()\n        ├── CLAUDE path  → anthropic.Anthropic → messages.create()\n        └── OLLAMA path  → ollama.Client → chat()\n\`\`\``,
+  feature_status: `# FEATURE STATUS\n\nSee the Feature Status view for the interactive table.\n\nLegend: ✅ Working | ⚠ Partial | ❌ Broken | 🔲 Planned | 🗑 Retired`,
+  known_bugs: `# KNOWN BUGS\n\nSee the Bugs view for the interactive bug tracker.\n\nTotal: 12 known issues across critical / significant / minor severity levels.`,
+  roadmap: `# ROADMAP\n\nSee the Roadmap view for the interactive sprint board.\n\n6 sprints defined:\n- Sprint 1: Fix before anything else (crash, fish brain, log spam)\n- Sprint 2: Stage name everywhere\n- Sprint 3: Live tab rebuild\n- Sprint 4: Logging & diagnostics\n- Sprint 5: Cleanup (~1000 dead lines)\n- Sprint 6: Pre-launch polish`,
+};
+
+let BUGS = [
+  {id:1, severity:'critical', title:'Auto-debrief crash on every run', file:'core/app.py lines 934–1099', desc:'_fire_auto_debrief() calls _detect_stage() which imports engine/stage_lookup.py — a deleted file. Every auto-debrief crashes silently.', fix:'Replace stage block with ID-based lookup from udp_monitor._last_location_id / _last_route_id. Delete all dead stage methods (~150 lines).', status:'open'},
+  {id:2, severity:'critical', title:'[STAGE] log fires every UDP packet', file:'engine/sully_engine.py lines 107–115', desc:'_stage_logged flag resets when Distance < 1.0 but the reset check runs before the flag is checked — logs on every packet while distance is low.', fix:'Separate reset and log check. Reset on new stage start when _is_active goes False → True transition.', status:'open'},
+  {id:3, severity:'significant', title:'Stage name never reaches UI', file:'engine/sully_engine.py, core/app.py, ui/tabs/live.py', desc:'_last_location_id and _last_route_id stored on udp_monitor but never read to update live tab, run selector labels, CSV filename, or forensic stat bar.', fix:'Wire udp_monitor._last_location_id to all UI display points after each packet parse.', status:'open'},
+  {id:4, severity:'significant', title:'CSV filename has no stage name', file:'engine/sully_engine.py line ~200', desc:'Filename is Run_YYYYMMDD_HHMMSS.csv with no stage info. 155 runs are all named this way.', fix:'Read _last_location_id + _last_route_id at save time. Build Run_RallyIberia_Montclar_20260312.csv', status:'open'},
+  {id:5, severity:'significant', title:'Fish brain — Sully repeats himself', file:'engine/sully_engine.py _build_memory_context()', desc:'prior_feedback_summary not injected into debrief prompt. Sully has no memory of his own previous coaching output — gives identical feedback every run.', fix:'Store last debrief in sully_memory.prior_feedback_summary in Supabase. Load and inject in _build_memory_context(). Add hard rule: never repeat if data doesn\'t confirm issue persists.', status:'open'},
+  {id:6, severity:'significant', title:'_pending_stage_confirm guard blocking chat', file:'core/app.py lines 500, 885', desc:'Guards check _pending_stage_confirm before processing chat. Old stage confirmation flow is dead but state var still present. May silently block messages.', fix:'Delete _pending_stage_confirm state var and all guards.', status:'open'},
+  {id:7, severity:'minor', title:'Silent except: pass swallowing errors (×5)', file:'mixins_profile.py:182, mixins_cloud.py:210+416, networking.py:134+166', desc:'5 locations where exceptions are caught and completely ignored. Failures disappear silently. User sees nothing.', fix:'Replace with except Exception as e: print(f"[error] {e}") at minimum.', status:'open'},
+  {id:8, severity:'minor', title:'topbar.py is orphaned', file:'ui/topbar.py', desc:'build_d5_topbar() is defined but never called anywhere. core/profile.py says "No topbar. Sidebar owns hud_avatar."', fix:'Delete ui/topbar.py entirely.', status:'open'},
+  {id:9, severity:'minor', title:'profile_widget.py in root (wrong location)', file:'profile_widget.py', desc:'Should be in ui/ package but sits in root. Works because Python path includes root, but breaks modular structure.', fix:'Move to ui/profile_widget.py, update 3 import sites.', status:'open'},
+  {id:10, severity:'minor', title:'session_recorder.py — 696 lines of dead weight', file:'engine/session_recorder.py', desc:'Fully retired. core/app.py line 239 says so. Auto-installs mss, sounddevice, openai-whisper on import — none needed.', fix:'Delete the file entirely.', status:'open'},
+  {id:11, severity:'minor', title:'Unused imports in core files', file:'core/app.py, mixins/mixins_cloud.py, mixins/mixins_profile.py', desc:'QColor, TXT_MID, BORDER, QLabel, FONT_MONO, level_progress_pct, TXT_DIM in app.py. QTimer, BORDER, json, FONT_BODY in mixins_cloud. AvatarCircle imported twice.', fix:'Audit and remove each unused import.', status:'open'},
+  {id:12, severity:'minor', title:'Port mismatch risk — UdpMonitor defaults to 20777', file:'engine/sully_engine.py line 22', desc:'UdpMonitor.__init__ defaults to port=20777 but app passes 20778. If anything instantiates UdpMonitor() without port arg it silently listens on wrong port.', fix:'Change default to port=20778.', status:'open'},
+];
+
+let FEATURES = [
+  {group:'Core / Infrastructure', items:[
+    {name:'UDP telemetry receive', status:'working', note:'Port 20778, custom1 packet, 75 fields'},
+    {name:'CSV recording', status:'working', note:'Spatial downsampling, 4 save triggers'},
+    {name:'Auto-load on save', status:'working', note:'run_saved_signal → _auto_load_run'},
+    {name:'Auto-debrief on save', status:'working', note:'Fires after 2.5s delay'},
+    {name:'Config load/save', status:'working', note:'sully_config.json via core/config.py'},
+    {name:'Supabase auth', status:'working', note:'Login, register, token restore'},
+    {name:'Session token refresh', status:'partial', note:'Stale token handling works but triggers on every cold start'},
+    {name:'Font loading', status:'working', note:'Syne + Share Tech Mono bundled'},
+    {name:'Frameless window', status:'working', note:'Drag, resize, minimize, maximize'},
+    {name:'Update system', status:'working', note:'Background check, banner, installer launch'},
+  ]},
+  {group:'Stage Detection', items:[
+    {name:'LocationId from UDP', status:'working', note:'Offset 262, uint16'},
+    {name:'RouteId from UDP', status:'working', note:'Offset 264, uint16'},
+    {name:'ids.json lookup', status:'working', note:'20 locations, 264 routes, exact names'},
+    {name:'Stage name in debrief prompt', status:'working', note:'Prepended as === STAGE: X ==='},
+    {name:'Stage name in CSV filename', status:'broken', note:'Still Run_YYYYMMDD_HHMMSS.csv'},
+    {name:'Stage name in run selector', status:'broken', note:'Shows filename only'},
+    {name:'Stage name in live tab', status:'broken', note:'Not displayed anywhere'},
+    {name:'Stage name in stat bar', status:'broken', note:'Forensic stat bar missing it'},
+    {name:'[STAGE] log spam fix', status:'broken', note:'Prints every packet, flag not resetting'},
+  ]},
+  {group:'AI / Coaching', items:[
+    {name:'Gemini backend', status:'working', note:'Default, gemini-2.0-flash'},
+    {name:'Claude backend', status:'working', note:'claude-haiku-4-5-20251001'},
+    {name:'Ollama local backend', status:'working', note:'gemma3:latest'},
+    {name:'Training mode', status:'working', note:'Detailed technical feedback'},
+    {name:'Race / Qualifying / Consistency modes', status:'working', note:'All 5 core modes'},
+    {name:'Auto-debrief (4-line)', status:'working', note:'Fires after every run'},
+    {name:'Crash analysis', status:'working', note:'Triggered from crash replay'},
+    {name:'Sector analysis', status:'working', note:'Triggered from forensic map click'},
+    {name:'Fish brain (repetition)', status:'broken', note:'Sully repeats same feedback — needs prior_feedback_summary'},
+    {name:'Surface-aware coaching', status:'planned', note:'Gravel vs asphalt vs snow'},
+    {name:'Vehicle-aware coaching', status:'planned', note:'Know which car, class, adjust advice'},
+  ]},
+  {group:'Memory System', items:[
+    {name:'sully_memory load', status:'working', note:'On post-auth'},
+    {name:'sully_memory save after run', status:'working', note:'After debrief completes'},
+    {name:'sully_runs insert', status:'working', note:'Per-run stats saved'},
+    {name:'Recent runs for cross-run delta', status:'working', note:'Last 10 runs loaded'},
+    {name:'Memory bar in chat UI', status:'working', note:'Sessions, form, streak'},
+    {name:'prior_feedback_summary', status:'planned', note:'Not yet injected into debrief prompt'},
+  ]},
+  {group:'Telemetry / Forensic Tab', items:[
+    {name:'CSV load', status:'working', note:''},
+    {name:'Run selector', status:'working', note:''},
+    {name:'Stat bar (speed, G, distance)', status:'working', note:''},
+    {name:'Stage name in stat bar', status:'broken', note:''},
+    {name:'2-col graph grid (INPUTS/POWERTRAIN/SUSPENSION/THERMALS)', status:'working', note:''},
+    {name:'Map (X/Z scatter)', status:'working', note:'Speed/brake/G-force colour modes'},
+    {name:'Map click to scrub', status:'working', note:''},
+    {name:'Sector analysis (worst 3)', status:'working', note:''},
+    {name:'Cross-run delta overlay', status:'partial', note:'Built in mixins, stability unknown'},
+  ]},
+  {group:'Live Tab', items:[
+    {name:'Gear / Speed / RPM / Pedals', status:'working', note:''},
+    {name:'Steering indicator', status:'working', note:''},
+    {name:'Spotter log', status:'working', note:''},
+    {name:'Stage name display', status:'broken', note:'Not shown'},
+    {name:'Car card / vehicle image', status:'planned', note:'Planned — Supabase image by VehicleId'},
+    {name:'Tyre state display', status:'planned', note:'Data available at offsets 250–253'},
+    {name:'ABS indicator', status:'planned', note:'Data at offset 266'},
+  ]},
+  {group:'Network / Cloud Tab', items:[
+    {name:'Cloud run list', status:'working', note:''},
+    {name:'Download rival runs', status:'working', note:''},
+    {name:'Upload telemetry', status:'working', note:''},
+    {name:'Global leaderboard', status:'working', note:''},
+    {name:'Insight panel', status:'working', note:'AI analysis of cloud runs'},
+  ]},
+  {group:'Session Recording', items:[
+    {name:'Screen capture ring buffer', status:'retired', note:'session_recorder.py retired'},
+    {name:'Audio loopback recording', status:'retired', note:'Retired'},
+    {name:'Whisper transcription', status:'retired', note:'Retired'},
+    {name:'Highlight clip detection', status:'retired', note:'Retired'},
+  ]},
+];
+
+let TASKS = [
+  // Sprint 1
+  {id:1, sprint:1, sprintLabel:'SPRINT 1', sprintColor:'var(--red)', sprintTitle:'Fix Before Anything Else', sprintSub:'The product is broken until these are done.', title:'Fix auto-debrief crash', file:'core/app.py', desc:'Replace stage detection block in _fire_auto_debrief() with ID-based lookup. Delete all dead stage methods (~150 lines). Remove _pending_stage_confirm and _known_stages.', done:false},
+  {id:2, sprint:1, sprintLabel:'SPRINT 1', sprintColor:'var(--red)', sprintTitle:'Fix Before Anything Else', sprintSub:'The product is broken until these are done.', title:'Fix Sully fish brain (repetition)', file:'engine/sully_engine.py, network/networking.py, Supabase', desc:'Store last debrief output in sully_memory.prior_feedback_summary. Inject into _build_memory_context(). Add hard rule to prompt: never repeat if issue not confirmed by data.', done:false},
+  {id:3, sprint:1, sprintLabel:'SPRINT 1', sprintColor:'var(--red)', sprintTitle:'Fix Before Anything Else', sprintSub:'The product is broken until these are done.', title:'Fix [STAGE] log spam', file:'engine/sully_engine.py lines 107–120', desc:'Fix flag reset logic — reset on stage transition, not every packet.', done:false},
+  // Sprint 2
+  {id:4, sprint:2, sprintLabel:'SPRINT 2', sprintColor:'var(--amber)', sprintTitle:'Stage Name Everywhere', sprintSub:'The stage is known. Show it.', title:'Stage name in CSV filename', file:'engine/sully_engine.py _save_csv()', desc:'Read _last_location_id + _last_route_id at save time. Build: Run_RallyIberia_Montclar_20260312_182421.csv', done:false},
+  {id:5, sprint:2, sprintLabel:'SPRINT 2', sprintColor:'var(--amber)', sprintTitle:'Stage Name Everywhere', sprintSub:'The stage is known. Show it.', title:'Stage name in run selector', file:'ui/tabs/telemetry.py, mixins/mixins_cloud.py', desc:'Parse stage name from filename when populating run list. Display as "Rally Iberia — Montclar" instead of raw filename.', done:false},
+  {id:6, sprint:2, sprintLabel:'SPRINT 2', sprintColor:'var(--amber)', sprintTitle:'Stage Name Everywhere', sprintSub:'The stage is known. Show it.', title:'Stage name in forensic stat bar', file:'ui/tabs/telemetry.py', desc:'Add stage label to the stat bar when a run is loaded.', done:false},
+  {id:7, sprint:2, sprintLabel:'SPRINT 2', sprintColor:'var(--amber)', sprintTitle:'Stage Name Everywhere', sprintSub:'The stage is known. Show it.', title:'Stage name in live tab', file:'ui/tabs/live.py, core/app.py', desc:'Show current stage name as soon as UDP detects it. Update live when stage changes.', done:false},
+  // Sprint 3
+  {id:8, sprint:3, sprintLabel:'SPRINT 3', sprintColor:'var(--blue)', sprintTitle:'Live Tab Rebuild', sprintSub:'Most visible part of the app on first run.', title:'Stage card', file:'ui/tabs/live.py', desc:'Surface pill (gravel/asphalt/snow colour coded), rally name, route name, stage length.', done:false},
+  {id:9, sprint:3, sprintLabel:'SPRINT 3', sprintColor:'var(--blue)', sprintTitle:'Live Tab Rebuild', sprintSub:'Most visible part of the app on first run.', title:'Car card (text-first)', file:'ui/tabs/live.py', desc:'Vehicle name from ids.json VehicleId lookup. Manufacturer. Class badge (Rally1/2/3).', done:false},
+  {id:10, sprint:3, sprintLabel:'SPRINT 3', sprintColor:'var(--blue)', sprintTitle:'Live Tab Rebuild', sprintSub:'Most visible part of the app on first run.', title:'Car image from Supabase', file:'ui/tabs/live.py', desc:'Upload renders to vehicle_images/{vehicle_id}.png Supabase bucket. Fetch by VehicleId. Cache locally. Fallback to silhouette.', done:false},
+  {id:11, sprint:3, sprintLabel:'SPRINT 3', sprintColor:'var(--blue)', sprintTitle:'Live Tab Rebuild', sprintSub:'Most visible part of the app on first run.', title:'Tyre state indicators', file:'ui/tabs/live.py', desc:'4 corner tyre state bytes (offsets 250–253). Colour coded: green/yellow/red.', done:false},
+  {id:12, sprint:3, sprintLabel:'SPRINT 3', sprintColor:'var(--blue)', sprintTitle:'Live Tab Rebuild', sprintSub:'Most visible part of the app on first run.', title:'ABS + game mode indicators', file:'ui/tabs/live.py', desc:'Small chips: ABS active indicator, game mode (TIME TRIAL / CAREER / CLUBS).', done:false},
+  // Sprint 4
+  {id:13, sprint:4, sprintLabel:'SPRINT 4', sprintColor:'var(--accent)', sprintTitle:'Logging & Diagnostics', sprintSub:'You should be able to see what the app is doing.', title:'Central logger', file:'Multiple files', desc:'Replace all print() calls with structured logger. Log levels: INFO / WARN / ERROR. Write to disk: sully_session_YYYYMMDD.log', done:false},
+  {id:14, sprint:4, sprintLabel:'SPRINT 4', sprintColor:'var(--accent)', sprintTitle:'Logging & Diagnostics', sprintSub:'You should be able to see what the app is doing.', title:'In-app console tab', file:'ui/tabs/', desc:'New tab showing real-time log stream. Lines prefixed: [udp], [recorder], [stage], [debrief], [cloud], [error]. Clear button. Auto-scroll.', done:false},
+  {id:15, sprint:4, sprintLabel:'SPRINT 4', sprintColor:'var(--accent)', sprintTitle:'Logging & Diagnostics', sprintSub:'You should be able to see what the app is doing.', title:'System status panel', file:'ui/', desc:'Always-visible strip: UDP ● Stage ● Recording ● AI Ready ● Cloud ● Green/amber/red dots.', done:false},
+  // Sprint 5
+  {id:16, sprint:5, sprintLabel:'SPRINT 5', sprintColor:'var(--txt2)', sprintTitle:'Cleanup', sprintSub:'~1000 lines of dead code to remove.', title:'Delete engine/session_recorder.py (696 lines)', file:'engine/session_recorder.py', desc:'Fully retired. Auto-installs packages that aren\'t needed.', done:false},
+  {id:17, sprint:5, sprintLabel:'SPRINT 5', sprintColor:'var(--txt2)', sprintTitle:'Cleanup', sprintSub:'~1000 lines of dead code to remove.', title:'Delete ui/topbar.py', file:'ui/topbar.py', desc:'Never called. core/profile.py explicitly says "No topbar."', done:false},
+  {id:18, sprint:5, sprintLabel:'SPRINT 5', sprintColor:'var(--txt2)', sprintTitle:'Cleanup', sprintSub:'~1000 lines of dead code to remove.', title:'Fix silent except: pass (×5 locations)', file:'mixins, networking.py', desc:'5 locations where exceptions disappear silently.', done:false},
+  {id:19, sprint:5, sprintLabel:'SPRINT 5', sprintColor:'var(--txt2)', sprintTitle:'Cleanup', sprintSub:'~1000 lines of dead code to remove.', title:'Fix default port 20777 → 20778', file:'engine/sully_engine.py line 22', desc:'Change UdpMonitor default to port=20778.', done:false},
+  // Sprint 6
+  {id:20, sprint:6, sprintLabel:'SPRINT 6', sprintColor:'var(--green)', sprintTitle:'Pre-Launch Polish', sprintSub:'Everything needed before charging money.', title:'Onboarding wizard', file:'ui/dialogs.py', desc:'Confirms: EA WRC detected, custom1.json in place, UDP firing, cloud connected.', done:false},
+  {id:21, sprint:6, sprintLabel:'SPRINT 6', sprintColor:'var(--green)', sprintTitle:'Pre-Launch Polish', sprintSub:'Everything needed before charging money.', title:'Free tier enforcement', file:'network/networking.py, Supabase', desc:'5 runs/month limit. Clear UI for what\'s free vs paid. Supabase row count enforced server-side.', done:false},
+  {id:22, sprint:6, sprintLabel:'SPRINT 6', sprintColor:'var(--green)', sprintTitle:'Pre-Launch Polish', sprintSub:'Everything needed before charging money.', title:'Pricing + payment', file:'TBD', desc:'Stripe integration or similar. $12–15/month.', done:false},
+];
+
+let bugFilter = 'all';
+let featFilter = 'all';
+let taskFilter = 'all';
+let searchQuery = '';
+
+// ══════════════════════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════════════════════
+function nav(view) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.sb-item').forEach(i => i.classList.remove('active'));
+  document.getElementById('view-' + view).classList.add('active');
+  document.querySelector(`[onclick="nav('${view}')"]`).classList.add('active');
+  const titles = {dashboard:'Dashboard',docs:'All Documents',bugs:'Known Bugs',features:'Feature Status',roadmap:'Roadmap',changelog:'Changelog',decisions:'Decisions',cleanup:'Cleanup List'};
+  document.getElementById('tb-title').textContent = titles[view] || view;
+  if(view === 'bugs') renderBugs();
+  if(view === 'features') renderFeatures();
+  if(view === 'roadmap') renderRoadmap();
+  if(view === 'changelog') renderChangelog();
+  if(view === 'decisions') renderDecisions();
+  if(view === 'cleanup') renderCleanup();
+  if(view === 'docs') renderDocs();
+  if(view === 'dashboard') renderDashboard();
+}
+
+// ══════════════════════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════════════════════
+function renderDashboard() {
+  const critical = BUGS.filter(b => b.severity === 'critical' && b.status === 'open');
+  const done = TASKS.filter(t => t.done).length;
+  const working = FEATURES.flatMap(g => g.items).filter(f => f.status === 'working').length;
+  document.getElementById('stat-critical').textContent = critical.length;
+  document.getElementById('stat-open').textContent = BUGS.filter(b => b.status === 'open').length;
+  document.getElementById('stat-working').textContent = working;
+  document.getElementById('stat-tasks').textContent = TASKS.length;
+  document.getElementById('stat-tasks-done').textContent = done + ' done';
+  document.getElementById('sb-task-count').textContent = TASKS.length;
+
+  // Critical bugs
+  document.getElementById('dash-critical-bugs').innerHTML = critical.map(b => `
+    <div class="bug-row" onclick="nav('bugs')">
+      <div class="severity sev-critical"></div>
+      <div><div class="bug-title">${b.title}</div><div class="bug-file">${b.file}</div></div>
+    </div>`).join('');
+
+  // Sprint 1 tasks
+  const s1 = TASKS.filter(t => t.sprint === 1);
+  document.getElementById('dash-sprint1').innerHTML = s1.map(t => `
+    <div class="bug-row" onclick="nav('roadmap')">
+      <div class="task-check ${t.done?'checked':''}">
+        ${t.done?'✓':''}
+      </div>
+      <div><div class="bug-title">${t.title}</div><div class="bug-file">${t.file}</div></div>
+    </div>`).join('');
+
+  // Broken features
+  const broken = FEATURES.flatMap(g => g.items).filter(f => f.status === 'broken').slice(0, 6);
+  document.getElementById('dash-broken').innerHTML = broken.map(f => `
+    <div class="feat-row">
+      <div class="feat-status fs-broken">BROKEN</div>
+      <div class="feat-name">${f.name}</div>
+      ${f.note ? `<div class="feat-note">${f.note}</div>` : ''}
+    </div>`).join('');
+
+  // Working features (sample)
+  const wk = FEATURES.flatMap(g => g.items).filter(f => f.status === 'working').slice(0, 6);
+  document.getElementById('dash-working').innerHTML = wk.map(f => `
+    <div class="feat-row">
+      <div class="feat-status fs-working">WORKING</div>
+      <div class="feat-name">${f.name}</div>
+    </div>`).join('');
+}
+
+// ══════════════════════════════════════════════════════════
+// DOCS
+// ══════════════════════════════════════════════════════════
+function renderDocs() {
+  document.getElementById('docs-grid').innerHTML = DOCS.map(d => `
+    <div class="doc-card" onclick="openDoc('${d.id}')">
+      <div class="dc-tag" style="background:${d.tagColor}22;color:${d.tagColor}">${d.tag}</div>
+      <div class="dc-title">${d.title}</div>
+      <div class="dc-desc">${d.desc}</div>
+    </div>`).join('');
+}
+
+function openDoc(id) {
+  const doc = DOCS.find(d => d.id === id);
+  if(!doc) return;
+  document.getElementById('dr-title').textContent = doc.title;
+  const content = DOC_CONTENT[id] || `# ${doc.title}\n\n${doc.desc}\n\n*Full content available in the Project Debrief zip.*`;
+  document.getElementById('dr-body').innerHTML = renderMarkdown(content);
+  document.getElementById('doc-reader').classList.add('show');
+}
+
+function closeDocReader() {
+  document.getElementById('doc-reader').classList.remove('show');
+}
+
+function renderMarkdown(md) {
+  return md
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+    .replace(/^---$/gm, '<hr>')
+    .replace(/```[\w]*\n([\s\S]*?)```/gm, (m, code) => `<pre>${escHtml(code.trim())}</pre>`)
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/^\| (.+) \|$/gm, row => {
+      const cells = row.slice(2, -2).split(' | ');
+      return '<tr>' + cells.map(c => `<td>${c}</td>`).join('') + '</tr>';
+    })
+    .replace(/(<tr>.*<\/tr>\n)+/gm, match => `<table>${match.replace(/<tr><td>-+<\/td>.*<\/tr>\n/gm, '')}</table>`)
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>\n)+/gm, match => `<ul>${match}</ul>`)
+    .replace(/^\*\*(.+)\*\*$/gm, '<strong>$1</strong>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
+    .replace(/^([^<\n].+)$/gm, '<p>$1</p>')
+    .replace(/<p><\/p>/g, '');
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ══════════════════════════════════════════════════════════
+// BUGS
+// ══════════════════════════════════════════════════════════
+function renderBugs() {
+  let bugs = BUGS;
+  if(bugFilter === 'critical') bugs = bugs.filter(b => b.severity === 'critical');
+  else if(bugFilter === 'significant') bugs = bugs.filter(b => b.severity === 'significant');
+  else if(bugFilter === 'minor') bugs = bugs.filter(b => b.severity === 'minor');
+  else if(bugFilter === 'open') bugs = bugs.filter(b => b.status === 'open');
+  else if(bugFilter === 'fixed') bugs = bugs.filter(b => b.status === 'fixed');
+  if(searchQuery) bugs = bugs.filter(b => b.title.toLowerCase().includes(searchQuery) || b.desc.toLowerCase().includes(searchQuery));
+
+  document.getElementById('bugs-body').innerHTML = bugs.map(b => `
+    <div class="bug-card" id="bug-${b.id}" onclick="toggleBug(${b.id})">
+      <div class="bc-header">
+        <div class="bc-num">#${b.id}</div>
+        <div class="bc-sev ${b.severity}">${b.severity.toUpperCase()}</div>
+        <div class="bc-title">${b.title}</div>
+        <div class="bc-status ${b.status}">${b.status.toUpperCase()}</div>
+      </div>
+      <div class="bc-body" id="bc-body-${b.id}">
+        <div class="bc-file">${b.file}</div>
+        <div class="bc-desc">${b.desc}</div>
+        <div class="bc-fix-label">FIX →</div>
+        <div class="bc-desc" style="color:var(--txt)">${b.fix}</div>
+        <div class="bc-actions">
+          ${b.status === 'open' ? `<button class="bc-btn" style="background:var(--green2);color:var(--green)" onclick="markFixed(event,${b.id})">MARK FIXED</button>` : `<button class="bc-btn" style="background:var(--amber2);color:var(--amber)" onclick="markOpen(event,${b.id})">REOPEN</button>`}
+          <button class="bc-btn" style="background:var(--blue2);color:var(--blue)" onclick="editBug(event,${b.id})">EDIT</button>
+          <button class="bc-btn" style="background:var(--red2);color:var(--red)" onclick="deleteBug(event,${b.id})">DELETE</button>
+        </div>
+      </div>
+    </div>`).join('');
+  document.getElementById('sb-bug-count').textContent = BUGS.filter(b=>b.status==='open').length;
+}
+
+function toggleBug(id) {
+  const body = document.getElementById('bc-body-' + id);
+  const card = document.getElementById('bug-' + id);
+  const open = body.classList.toggle('show');
+  card.classList.toggle('expanded', open);
+}
+
+function filterBugs(f, btn) {
+  bugFilter = f;
+  document.querySelectorAll('#view-bugs .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderBugs();
+}
+
+function markFixed(e, id) { e.stopPropagation(); BUGS.find(b=>b.id===id).status='fixed'; renderBugs(); toast('Bug #'+id+' marked fixed'); }
+function markOpen(e, id)  { e.stopPropagation(); BUGS.find(b=>b.id===id).status='open'; renderBugs(); toast('Bug #'+id+' reopened'); }
+
+function deleteBug(e, id) {
+  e.stopPropagation();
+  if(!confirm('Delete bug #'+id+'?')) return;
+  BUGS = BUGS.filter(b => b.id !== id);
+  renderBugs();
+  renderDashboard();
+  toast('Bug deleted');
+}
+
+function editBug(e, id) {
+  e.stopPropagation();
+  const b = BUGS.find(x => x.id === id);
+  openModal('Edit Bug', [
+    {label:'Title', key:'title', type:'input', val:b.title},
+    {label:'Severity', key:'severity', type:'select', options:['critical','significant','minor'], val:b.severity},
+    {label:'Status', key:'status', type:'select', options:['open','fixed','wontfix'], val:b.status},
+    {label:'File', key:'file', type:'input', val:b.file},
+    {label:'Description', key:'desc', type:'textarea', val:b.desc},
+    {label:'Fix', key:'fix', type:'textarea', val:b.fix},
+  ], data => { Object.assign(b, data); renderBugs(); renderDashboard(); toast('Bug updated'); });
+}
+
+function openAddBug() {
+  openModal('Add Bug', [
+    {label:'Title', key:'title', type:'input', val:''},
+    {label:'Severity', key:'severity', type:'select', options:['critical','significant','minor'], val:'minor'},
+    {label:'File', key:'file', type:'input', val:''},
+    {label:'Description', key:'desc', type:'textarea', val:''},
+    {label:'Fix', key:'fix', type:'textarea', val:''},
+  ], data => {
+    const id = Math.max(...BUGS.map(b=>b.id)) + 1;
+    BUGS.push({id, ...data, status:'open'});
+    renderBugs(); renderDashboard(); toast('Bug #'+id+' added');
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+// FEATURES
+// ══════════════════════════════════════════════════════════
+function renderFeatures() {
+  const statusMap = {working:'fs-working',broken:'fs-broken',partial:'fs-partial',planned:'fs-planned',retired:'fs-retired'};
+  const labelMap = {working:'WORKING',broken:'BROKEN',partial:'PARTIAL',planned:'PLANNED',retired:'RETIRED'};
+
+  let html = '';
+  FEATURES.forEach((group, gi) => {
+    let items = group.items;
+    if(featFilter !== 'all') items = items.filter(f => f.status === featFilter);
+    if(searchQuery) items = items.filter(f => f.name.toLowerCase().includes(searchQuery) || (f.note||'').toLowerCase().includes(searchQuery));
+    if(items.length === 0) return;
+
+    const counts = {working:0,broken:0,partial:0,planned:0,retired:0};
+    group.items.forEach(f => counts[f.status]++);
+
+    html += `<div class="feat-group">
+      <div class="feat-group-header" onclick="toggleGroup(${gi})">
+        <div class="fgh-title">${group.group}</div>
+        <div class="fgh-stats">
+          ${counts.working ? `<div class="fgh-pill" style="background:var(--green2);color:var(--green)">${counts.working} ✅</div>` : ''}
+          ${counts.broken ? `<div class="fgh-pill" style="background:var(--red2);color:var(--red)">${counts.broken} ❌</div>` : ''}
+          ${counts.partial ? `<div class="fgh-pill" style="background:var(--amber2);color:var(--amber)">${counts.partial} ⚠</div>` : ''}
+          ${counts.planned ? `<div class="fgh-pill" style="background:var(--blue2);color:var(--blue)">${counts.planned} 🔲</div>` : ''}
+        </div>
+      </div>
+      <div class="feat-group-body open" id="feat-group-${gi}">
+        ${items.map((f,fi) => `
+          <div class="feat-item">
+            <div class="fi-status ${statusMap[f.status]}">${labelMap[f.status]}</div>
+            <div style="flex:1">
+              <div class="fi-name">${f.name}</div>
+              ${f.note ? `<div class="fi-note">${f.note}</div>` : ''}
+            </div>
+            <div class="fi-actions">
+              <select class="fi-btn" style="width:80px" onchange="changeFeatureStatus(${gi},${fi},this.value)">
+                ${['working','broken','partial','planned','retired'].map(s=>`<option value="${s}" ${f.status===s?'selected':''}>${labelMap[s]}</option>`).join('')}
+              </select>
+              <button class="fi-btn" onclick="editFeature(${gi},${fi})">EDIT</button>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  });
+  document.getElementById('features-body').innerHTML = html;
+  const total = FEATURES.flatMap(g=>g.items).length;
+  const shown = FEATURES.flatMap(g=>g.items).filter(f => featFilter === 'all' ? true : f.status === featFilter).length;
+  document.getElementById('feat-count').textContent = shown + (featFilter==='all'?'':` of ${total}`) + ' features';
+}
+
+function toggleGroup(gi) {
+  const el = document.getElementById('feat-group-' + gi);
+  el.classList.toggle('open');
+}
+
+function changeFeatureStatus(gi, fi, status) {
+  FEATURES[gi].items[fi].status = status;
+  renderFeatures();
+  renderDashboard();
+  toast('Feature status updated');
+}
+
+function editFeature(gi, fi) {
+  const f = FEATURES[gi].items[fi];
+  openModal('Edit Feature', [
+    {label:'Name', key:'name', type:'input', val:f.name},
+    {label:'Status', key:'status', type:'select', options:['working','broken','partial','planned','retired'], val:f.status},
+    {label:'Note', key:'note', type:'input', val:f.note||''},
+  ], data => { Object.assign(f, data); renderFeatures(); renderDashboard(); toast('Feature updated'); });
+}
+
+function filterFeats(f, btn) {
+  featFilter = f;
+  document.querySelectorAll('#view-features .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderFeatures();
+}
+
+// ══════════════════════════════════════════════════════════
+// ROADMAP
+// ══════════════════════════════════════════════════════════
+function renderRoadmap() {
+  const sprints = [...new Set(TASKS.map(t => t.sprint))];
+  let html = '';
+
+  sprints.forEach(s => {
+    let tasks = TASKS.filter(t => t.sprint === s);
+    const first = tasks[0];
+    if(taskFilter === 'open') tasks = tasks.filter(t => !t.done);
+    if(taskFilter === 'done') tasks = tasks.filter(t => t.done);
+    if(searchQuery) tasks = tasks.filter(t => t.title.toLowerCase().includes(searchQuery));
+    if(tasks.length === 0 && taskFilter !== 'all') return;
+
+    const done = tasks.filter(t=>t.done).length;
+    html += `<div class="sprint">
+      <div class="sprint-header">
+        <div class="sprint-tag" style="background:${first.sprintColor}22;color:${first.sprintColor}">${first.sprintLabel}</div>
+        <div style="flex:1">
+          <div class="sprint-title">${first.sprintTitle}</div>
+          <div class="sprint-sub">${first.sprintSub}</div>
+        </div>
+        <div style="font-size:9px;color:var(--txt3)">${done}/${tasks.length} done</div>
+      </div>
+      ${tasks.map(t => `
+        <div class="task-item ${t.done?'done':''}" onclick="toggleTask(${t.id})">
+          <div class="task-check ${t.done?'checked':''}">${t.done?'✓':''}</div>
+          <div style="flex:1">
+            <div class="task-title">${t.title}</div>
+            <div class="task-file">${t.file}</div>
+            <div class="task-desc">${t.desc}</div>
+          </div>
+          <div style="display:flex;gap:4px;flex-shrink:0" onclick="event.stopPropagation()">
+            <button class="fi-btn" onclick="editTask(${t.id})">EDIT</button>
+            <button class="fi-btn" style="color:var(--red)" onclick="deleteTask(${t.id})">DEL</button>
+          </div>
+        </div>`).join('')}
+    </div>`;
+  });
+
+  document.getElementById('roadmap-body').innerHTML = html;
+  const done = TASKS.filter(t=>t.done).length;
+  document.getElementById('task-count').textContent = done + ' / ' + TASKS.length + ' done';
+  document.getElementById('sb-task-count').textContent = TASKS.length;
+  document.getElementById('stat-tasks-done').textContent = done + ' done';
+}
+
+function toggleTask(id) {
+  const t = TASKS.find(x => x.id === id);
+  t.done = !t.done;
+  renderRoadmap();
+  renderDashboard();
+  toast(t.done ? 'Task marked done ✓' : 'Task reopened');
+}
+
+function deleteTask(id) {
+  if(!confirm('Delete task?')) return;
+  TASKS = TASKS.filter(t => t.id !== id);
+  renderRoadmap();
+  renderDashboard();
+  toast('Task deleted');
+}
+
+function editTask(id) {
+  const t = TASKS.find(x => x.id === id);
+  openModal('Edit Task', [
+    {label:'Title', key:'title', type:'input', val:t.title},
+    {label:'File / Location', key:'file', type:'input', val:t.file},
+    {label:'Description', key:'desc', type:'textarea', val:t.desc},
+    {label:'Sprint', key:'sprint', type:'select', options:['1','2','3','4','5','6'], val:String(t.sprint)},
+  ], data => { Object.assign(t, {...data, sprint:parseInt(data.sprint)}); renderRoadmap(); renderDashboard(); toast('Task updated'); });
+}
+
+function openAddTask() {
+  openModal('Add Task', [
+    {label:'Title', key:'title', type:'input', val:''},
+    {label:'Sprint', key:'sprint', type:'select', options:['1','2','3','4','5','6'], val:'1'},
+    {label:'File / Location', key:'file', type:'input', val:''},
+    {label:'Description', key:'desc', type:'textarea', val:''},
+  ], data => {
+    const id = Math.max(...TASKS.map(t=>t.id)) + 1;
+    const sprintNum = parseInt(data.sprint);
+    const ref = TASKS.find(t => t.sprint === sprintNum) || TASKS[0];
+    TASKS.push({id, sprint:sprintNum, sprintLabel:ref.sprintLabel, sprintColor:ref.sprintColor, sprintTitle:ref.sprintTitle, sprintSub:ref.sprintSub, ...data, done:false});
+    renderRoadmap(); renderDashboard(); toast('Task added');
+  });
+}
+
+function filterTasks(f, btn) {
+  taskFilter = f;
+  document.querySelectorAll('#view-roadmap .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderRoadmap();
+}
+
+// ══════════════════════════════════════════════════════════
+// CHANGELOG
+// ══════════════════════════════════════════════════════════
+function renderChangelog() {
+  document.getElementById('changelog-body').innerHTML = `
+    <div class="cl-entry">
+      <div class="cl-version">
+        <div class="cl-ver-tag">[Unreleased]</div>
+        <div class="cl-ver-date">In Progress</div>
+        <div class="cl-ver-label">Documentation sprint</div>
+      </div>
+      <div class="cl-section"><div class="cl-section-title">ADDED</div>
+        ${['ROADMAP.md — full prioritised feature roadmap','CHANGELOG.md','ARCHITECTURE.md — data flow diagrams','FEATURE_STATUS.md','KNOWN_BUGS.md — bugs with file + line references','CLEANUP_LIST.md','DEAD_CODE.md','HONEST_REVIEW.md','DECISIONS.md — architectural decision records'].map(i=>`<div class="cl-item added">• ${i}</div>`).join('')}
+      </div>
+      <div class="cl-section"><div class="cl-section-title">BROKEN (to fix next session)</div>
+        <div class="cl-item deleted">• Auto-debrief crashes — calls deleted stage_lookup.py (KNOWN_BUGS #1)</div>
+        <div class="cl-item deleted">• [STAGE] logs on every packet (KNOWN_BUGS #2)</div>
+      </div>
+    </div>
+    <div class="cl-entry">
+      <div class="cl-version">
+        <div class="cl-ver-tag">[1.0.4]</div>
+        <div class="cl-ver-date">Stage Detection Rebuild</div>
+      </div>
+      <div class="cl-section"><div class="cl-section-title">ADDED</div>
+        ${['LocationId (offset 262, uint16) — exact stage country ID','RouteId (offset 264, uint16) — exact stage name ID','VehicleId, VehicleClassId, VehicleManufacturerId','TyreStateBL/BR/FL/FR — tyre condition per corner','ids.json loading — 20 locations, 264 routes, UTF-16','[STAGE] console output: LocationId=28 → RALLY IBERIA','custom1.json — full custom packet definition (all 75 fields)'].map(i=>`<div class="cl-item added">• ${i}</div>`).join('')}
+      </div>
+      <div class="cl-section"><div class="cl-section-title">CHANGED</div>
+        <div class="cl-item changed">• UDP port: 20777 → 20778</div>
+        <div class="cl-item changed">• Stage name now prepended to auto-debrief brief</div>
+      </div>
+      <div class="cl-section"><div class="cl-section-title">REMOVED</div>
+        <div class="cl-item deleted">• Distance-based stage detection heuristics from UdpMonitor</div>
+        <div class="cl-item deleted">• Stage confirmation dialog flow (dead UX)</div>
+      </div>
+    </div>
+    <div class="cl-entry">
+      <div class="cl-version">
+        <div class="cl-ver-tag">[1.0.3]</div>
+        <div class="cl-ver-date">Modular Restructure</div>
+      </div>
+      <div class="cl-section"><div class="cl-section-title">CHANGED (old → new)</div>
+        ${['main.py (god file) → core/app.py + slim main.py entry point','sully_ui.py (monolith) → ui/tabs/*.py + ui/*.py modules','networking.py → network/networking.py','paths.py → paths/paths.py','sully_engine.py (root) → engine/sully_engine.py'].map(i=>`<div class="cl-item changed">• ${i}</div>`).join('')}
+      </div>
+    </div>
+    <div class="cl-entry">
+      <div class="cl-version">
+        <div class="cl-ver-tag">[1.0.0]</div>
+        <div class="cl-ver-date">Initial Python Version</div>
+      </div>
+      <div class="cl-section"><div class="cl-section-title">CORE</div>
+        <div class="cl-item added">• main.py monolithic app, sully_engine.py, networking.py</div>
+        <div class="cl-item added">• Gemini + Ollama backends, basic coaching prompts</div>
+        <div class="cl-item added">• WRC Coach.exe — C# UDP backend (now retired)</div>
+      </div>
+    </div>`;
+}
+
+// ══════════════════════════════════════════════════════════
+// DECISIONS
+// ══════════════════════════════════════════════════════════
+function renderDecisions() {
+  const decisions = [
+    {cat:'UDP & Telemetry', color:'var(--blue)', items:[
+      {q:'Why custom1.json instead of the default WRC packet?', a:"The default WRC UDP packet doesn't expose LocationId or RouteId. Without those, stage detection requires distance-based heuristics which are ~90% ambiguous. custom1.json is EA's official custom packet API — we define the fields we want."},
+      {q:'Why port 20778 instead of 20777?', a:'20777 is the default WRC telemetry port. We use 20778 for our custom1 packet so it doesn\'t conflict with other tools (SimHub etc.) on 20777.'},
+      {q:'Why LocationId/RouteId instead of distance lookup?', a:'Distance lookup had two fatal problems: (1) multiple stages have same length, disambiguation impossible, (2) required user confirmation via chat. EA\'s own IDs are exact, always correct, zero user input.'},
+      {q:'Why spatial downsampling (>2m move threshold)?', a:'Raw UDP at 20-60hz at standstill = thousands of identical rows. At 2m threshold, a 10km stage produces ~5000 meaningful rows instead of ~50,000 noisy ones.'},
+    ]},
+    {cat:'AI & Coaching', color:'var(--accent)', items:[
+      {q:'Why multi-backend (Gemini / Claude / Ollama)?', a:'Gemini: fast, cheap, default. Claude: better at nuanced structured coaching. Ollama: privacy-first, works offline. One backend would alienate a segment of the target market.'},
+      {q:'Why 5 coaching modes?', a:'Rally is contextual. Just finished qualifying needs different response than crashed 3 times in the same corner. Modes let Sully adapt tone and depth without user explaining context every time.'},
+      {q:'Why 4-line auto-debrief format?', a:'Longer debriefs get ignored after the third run. Four lines forces Sully to prioritise. Structured format (SUMMARY / WORST SECTOR / INCONSISTENCY / PRIORITY FIX) — user always knows where to look.'},
+    ]},
+    {cat:'Architecture', color:'var(--purple)', items:[
+      {q:'Why mixins instead of separate handler classes?', a:'SullyTacticalApp needs access to Qt signals and self.* state everywhere. Mixins via multiple inheritance keep all signal wiring in one class hierarchy. Not elegant but practical for a Qt app of this size.'},
+      {q:'Why Supabase instead of local SQLite?', a:'Cross-device sync, cloud leaderboards, profile photos, rival downloads. Auth handled for free. Privacy tradeoff acceptable for sim racing telemetry. Local-only via Ollama + no auth remains as option.'},
+    ]},
+    {cat:'Product', color:'var(--green)', items:[
+      {q:'Why $12–15/month?', a:'Below "feels expensive" threshold for gaming tools. Above "must be garbage" free tier. Comparable to other sim racing coaching apps. 5 free runs/month gives genuine value before the ask.'},
+      {q:'Why WRC first, not F1?', a:'WRC has richer telemetry, smaller but higher-engagement audience, and no dominant coaching tool in the space. F1 is more competitive. WRC is the beachhead; F1 is the expansion.'},
+    ]},
+  ];
+
+  document.getElementById('decisions-body').innerHTML = decisions.map(cat => `
+    <div style="margin-bottom:20px">
+      <div style="font-family:var(--font-display);font-size:11px;font-weight:700;color:${cat.color};letter-spacing:2px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)">${cat.cat.toUpperCase()}</div>
+      ${cat.items.map(item => `
+        <div style="margin-bottom:10px;border:1px solid var(--border);border-radius:3px;overflow:hidden">
+          <div style="padding:8px 12px;background:var(--panel2);font-size:10px;color:var(--white);font-weight:700">${item.q}</div>
+          <div style="padding:8px 12px;font-size:10px;color:var(--txt2);line-height:1.6">${item.a}</div>
+        </div>`).join('')}
+    </div>`).join('');
+}
+
+// ══════════════════════════════════════════════════════════
+// CLEANUP
+// ══════════════════════════════════════════════════════════
+function renderCleanup() {
+  const items = [
+    {priority:'DELETE NOW', color:'var(--red)', items:[
+      {file:'ui/topbar.py', why:'Never imported. core/profile.py explicitly says "No topbar."', lines:'~40'},
+      {file:'engine/session_recorder.py', why:'696 lines. app.py line 239 confirms retired. No imports.', lines:'696'},
+      {file:'engine/stage_lookup.py', why:'Replaced by LocationId/RouteId lookup.', lines:'?'},
+      {file:'import_fixes.py', why:'One-time migration script, already been run.', lines:'141'},
+    ]},
+    {priority:'DELETE CODE BLOCKS', color:'var(--amber)', items:[
+      {file:'core/app.py → _load_known_stages()', why:'Dead — stage lookup retired', lines:'~15'},
+      {file:'core/app.py → _detect_stage()', why:'Dead — calls deleted stage_lookup.py', lines:'~25'},
+      {file:'core/app.py → _ask_stage_confirmation()', why:'Dead — confirmation flow retired', lines:'~20'},
+      {file:'core/app.py → _confirm_stage()', why:'Dead', lines:'~15'},
+      {file:'core/app.py → _save_known_stages()', why:'Dead', lines:'~10'},
+      {file:'core/app.py → _rename_runs_for_stage()', why:'Dead — calls deleted file', lines:'~20'},
+    ]},
+    {priority:'FIX', color:'var(--accent)', items:[
+      {file:'engine/sully_engine.py line 22', why:'Default port 20777 → should be 20778', lines:'1'},
+      {file:'mixins, networking.py (×5)', why:'Silent except: pass swallowing errors', lines:'5'},
+      {file:'engine/sully_engine.py lines 107–120', why:'[STAGE] log spam — flag reset logic wrong', lines:'10'},
+    ]},
+  ];
+
+  document.getElementById('cleanup-body').innerHTML = items.map(cat => `
+    <div style="margin-bottom:20px">
+      <div style="font-family:var(--font-display);font-size:11px;font-weight:700;color:${cat.color};letter-spacing:2px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)">${cat.priority}</div>
+      ${cat.items.map(item => `
+        <div style="display:flex;gap:10px;padding:7px 10px;border:1px solid var(--border);border-radius:3px;margin-bottom:5px;align-items:flex-start">
+          <div style="font-size:9px;padding:2px 7px;background:${cat.color}22;color:${cat.color};border-radius:2px;flex-shrink:0;margin-top:1px">${item.lines}L</div>
+          <div style="flex:1">
+            <div style="font-size:10px;color:var(--white);font-family:var(--font-ui)">${item.file}</div>
+            <div style="font-size:9px;color:var(--txt3);margin-top:2px">${item.why}</div>
+          </div>
+        </div>`).join('')}
+    </div>`).join('');
+}
+
+// ══════════════════════════════════════════════════════════
+// MODAL
+// ══════════════════════════════════════════════════════════
+let _modalCallback = null;
+
+function openModal(title, fields, onSave) {
+  document.getElementById('modal-title').textContent = title;
+  _modalCallback = onSave;
+  document.getElementById('modal-body').innerHTML = fields.map(f => `
+    <div class="form-group">
+      <label class="form-label">${f.label}</label>
+      ${f.type === 'textarea' ? `<textarea class="form-textarea" data-key="${f.key}">${f.val||''}</textarea>`
+       : f.type === 'select' ? `<select class="form-select" data-key="${f.key}">${f.options.map(o=>`<option value="${o}" ${o===f.val?'selected':''}>${o.toUpperCase()}</option>`).join('')}</select>`
+       : `<input class="form-input" type="text" data-key="${f.key}" value="${f.val||''}">`}
+    </div>`).join('');
+  document.getElementById('modal-overlay').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('show');
+  _modalCallback = null;
+}
+
+document.getElementById('modal-save').onclick = () => {
+  const data = {};
+  document.querySelectorAll('[data-key]').forEach(el => { data[el.dataset.key] = el.value; });
+  if(_modalCallback) _modalCallback(data);
+  closeModal();
+};
+
+document.getElementById('modal-overlay').onclick = e => { if(e.target === document.getElementById('modal-overlay')) closeModal(); };
+
+function openAddModal() {
+  const view = document.querySelector('.view.active').id.replace('view-','');
+  if(view === 'bugs') openAddBug();
+  else if(view === 'roadmap') openAddTask();
+  else toast('Select a view to add items');
+}
+
+// ══════════════════════════════════════════════════════════
+// SEARCH
+// ══════════════════════════════════════════════════════════
+function globalSearch(q) {
+  searchQuery = q.toLowerCase();
+  const view = document.querySelector('.view.active').id.replace('view-','');
+  if(view === 'bugs') renderBugs();
+  else if(view === 'features') renderFeatures();
+  else if(view === 'roadmap') renderRoadmap();
+}
+
+// ══════════════════════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════════════════════
+let _toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ══════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════
+renderDashboard();
+</script>
+
+<!-- SUPABASE AUTH -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPA_URL = 'https://hmrnwvahkcoexjcxohel.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhtcm53dmFoa2NvZXhqY3hvaGVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI2MDE1MTcsImV4cCI6MjA4ODE3NzUxN30.yOdCdiIIxIfZ1_y7X3mExKxJzqcCxspPHOkAiMOqzUs';
+const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+let isRegisterMode = false;
+
+function toggleRegister() {
+  isRegisterMode = !isRegisterMode;
+  document.getElementById('lg-submit').textContent = isRegisterMode ? 'CREATE ACCOUNT' : 'SIGN IN';
+  document.querySelector('.lg-switch').textContent = isRegisterMode ? 'Sign in instead' : 'Register';
+  document.querySelector('.lg-footer').childNodes[0].textContent = isRegisterMode ? 'Already have an account? ' : "Don't have an account? ";
+  document.getElementById('lg-err').classList.remove('show');
+}
+
+async function loginSubmit() {
+  const email = document.getElementById('lg-email').value.trim();
+  const password = document.getElementById('lg-password').value;
+  const btn = document.getElementById('lg-submit');
+  const err = document.getElementById('lg-err');
+
+  if(!email || !password) { showErr('Email and password required'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="lg-spinner"></span>' + (isRegisterMode ? 'CREATING...' : 'SIGNING IN...');
+  err.classList.remove('show');
+
+  try {
+    let result;
+    if(isRegisterMode) {
+      result = await supa.auth.signUp({ email, password });
+    } else {
+      result = await supa.auth.signInWithPassword({ email, password });
+    }
+
+    if(result.error) {
+      showErr(result.error.message);
+      btn.disabled = false;
+      btn.textContent = isRegisterMode ? 'CREATE ACCOUNT' : 'SIGN IN';
+      return;
+    }
+
+    if(isRegisterMode && !result.data.session) {
+      showErr('Check your email to confirm your account, then sign in.');
+      btn.disabled = false;
+      btn.textContent = 'SIGN IN';
+      isRegisterMode = false;
+      return;
+    }
+
+    // Success
+    unlockApp(result.data.user);
+
+  } catch(e) {
+    showErr('Connection error — check your network');
+    btn.disabled = false;
+    btn.textContent = isRegisterMode ? 'CREATE ACCOUNT' : 'SIGN IN';
+  }
+}
+
+function showErr(msg) {
+  const err = document.getElementById('lg-err');
+  err.textContent = msg;
+  err.classList.add('show');
+}
+
+function unlockApp(user) {
+  document.getElementById('login-gate').classList.add('hidden');
+  document.getElementById('app').style.display = 'flex';
+  // Show user email in sidebar footer
+  const footer = document.querySelector('#sidebar > div:last-child');
+  const emailEl = document.createElement('div');
+  emailEl.style.cssText = 'font-size:9px;color:var(--txt3);margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+  emailEl.textContent = '⬤ ' + user.email;
+  footer.insertBefore(emailEl, footer.firstChild);
+  // Add sign out
+  const signOutBtn = document.createElement('button');
+  signOutBtn.textContent = 'SIGN OUT';
+  signOutBtn.style.cssText = 'background:none;border:1px solid var(--border);color:var(--txt3);font-family:var(--font-ui);font-size:8px;padding:3px 8px;cursor:pointer;border-radius:2px;letter-spacing:1px;margin-top:4px;width:100%';
+  signOutBtn.onclick = signOut;
+  footer.appendChild(signOutBtn);
+}
+
+async function signOut() {
+  await supa.auth.signOut();
+  document.getElementById('login-gate').classList.remove('hidden');
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('lg-email').value = '';
+  document.getElementById('lg-password').value = '';
+  document.getElementById('lg-submit').disabled = false;
+  document.getElementById('lg-submit').textContent = 'SIGN IN';
+}
+
+// Check for existing session on load
+(async () => {
+  const { data } = await supa.auth.getSession();
+  if(data.session) {
+    unlockApp(data.session.user);
+  }
+})();
+
+// Enter key support
+document.getElementById('lg-password').addEventListener('keydown', e => {
+  if(e.key === 'Enter') loginSubmit();
+});
+document.getElementById('lg-email').addEventListener('keydown', e => {
+  if(e.key === 'Enter') document.getElementById('lg-password').focus();
+});
+</script>
+</body>
+</html>
