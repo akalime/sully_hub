@@ -2844,24 +2844,8 @@ async function rdDelete(filePath, name) {
 }
 
 // ── Viewer ────────────────────────────────────────────────
-function rdOpen(url, name, isImage) {
-  const isMobile = window.innerWidth <= 768;
-
-  // On mobile, fetch HTML and open as blob URL so Chrome renders it
-  if (!isImage && isMobile) {
-    fetch(url)
-      .then(function(r) { return r.text(); })
-      .then(function(html) {
-        const blob = new Blob([html], { type: 'text/html' });
-        const blobUrl = URL.createObjectURL(blob);
-        window.open(blobUrl, '_blank');
-        setTimeout(function() { URL.revokeObjectURL(blobUrl); }, 5000);
-      })
-      .catch(function() { window.open(url, '_blank'); });
-    return;
-  }
-
-  const viewer = document.getElementById('rd-viewer');
+async function rdOpen(url, name, isImage) {
+  const viewer  = document.getElementById('rd-viewer');
   const iframe  = document.getElementById('rd-viewer-iframe');
   const img     = document.getElementById('rd-viewer-img');
   const title   = document.getElementById('rd-viewer-title');
@@ -2869,20 +2853,36 @@ function rdOpen(url, name, isImage) {
 
   title.textContent = name;
   openBtn.href = url;
+  viewer.classList.add('open');
 
   if (isImage) {
     img.src = url;
     img.style.display = 'block';
     iframe.style.display = 'none';
+    iframe.removeAttribute('srcdoc');
     iframe.src = '';
-  } else {
-    iframe.src = url;
-    iframe.style.display = 'block';
-    img.style.display = 'none';
-    img.src = '';
+    return;
   }
 
-  viewer.classList.add('open');
+  // HTML — fetch content and inject via srcdoc so it renders on all browsers/mobile
+  iframe.style.display = 'block';
+  img.style.display = 'none';
+  img.src = '';
+  iframe.removeAttribute('srcdoc');
+  iframe.src = '';
+  title.textContent = name + ' — loading...';
+
+  try {
+    const resp = await fetch(url);
+    const html = await resp.text();
+    // srcdoc renders HTML inline — works on all mobile browsers, no MIME issues
+    iframe.srcdoc = html;
+    title.textContent = name;
+  } catch(e) {
+    // Fallback: try direct src
+    iframe.src = url;
+    title.textContent = name;
+  }
 }
 
 function rdCloseViewer() {
