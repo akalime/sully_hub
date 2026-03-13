@@ -44,7 +44,7 @@
   --font-display:'Syne',sans-serif;
 }
 
-html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font-family:var(--font-ui);font-size:12px}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font-family:var(--font-ui);font-size:12px;-webkit-overflow-scrolling:touch;}
 
 /* ── LAYOUT ── */
 #app{display:flex;height:100vh;overflow:hidden}
@@ -307,6 +307,25 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
 #sb-overlay { display:none; position:fixed; inset:0; background:#000000a0; z-index:499; }
 
 @media (max-width: 768px) {
+  /* Allow scroll everywhere on mobile */
+  html, body { overflow: hidden; height: 100%; }
+  #app { height: 100vh; overflow: hidden; }
+  #main { overflow: hidden; }
+  #content { overflow: hidden; }
+
+  /* All scrollable view bodies — use momentum scroll */
+  .view { -webkit-overflow-scrolling: touch; }
+  [id$="-body"], [id$="-list"], [id$="-grid"] {
+    -webkit-overflow-scrolling: touch;
+    overflow-y: auto !important;
+  }
+
+  /* Touch targets — bigger tap areas */
+  .sb-item { padding: 12px 14px; }
+  .filter-btn { padding: 8px 12px; min-height: 36px; }
+  .action-btn, .add-btn { min-height: 36px; }
+  button { min-height: 32px; }
+
   /* Login box */
   .lg-box { width: 92vw; }
 
@@ -381,6 +400,47 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
   #dash-grid { grid-template-columns: 1fr 1fr; }
   #docs-grid { grid-template-columns: 1fr; }
   .rd-card-actions { display: flex !important; } /* always show delete on touch */
+}
+
+
+/* ── TOUCH SCROLL FIXES ── */
+#bugs-body, #features-body, #roadmap-body, #changelog-body,
+#decisions-body, #cleanup-body, #dash-body, #docs-grid, #rd-grid,
+#view-bugs, #view-features, #view-roadmap, #view-changelog,
+#view-decisions, #view-cleanup, #view-dashboard, #view-docs {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+/* Prevent body scroll bleed on iOS */
+#sidebar { -webkit-overflow-scrolling: touch; overflow-y: auto; }
+/* Active view fills and scrolls */
+.view.active { display:flex; flex-direction:column; }
+
+
+@media (max-width: 768px) {
+  /* Each active view scrolls its own content */
+  #view-dashboard, #view-docs, #view-bugs, #view-features,
+  #view-roadmap, #view-changelog, #view-decisions, #view-cleanup,
+  #view-renders {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Inner body containers don't need their own scroll on mobile */
+  #bugs-body, #features-body, #roadmap-body, #changelog-body,
+  #decisions-body, #cleanup-body {
+    overflow: visible !important;
+    flex: none;
+  }
+  /* Dash body stacks and scrolls with view */
+  #dash-body { overflow: visible !important; }
+  #docs-grid { overflow: visible !important; }
+  /* Filter bars stay sticky at top */
+  .filter-bar { position: sticky; top: 0; z-index: 10; background: var(--panel); }
+  /* Topbar stays fixed */
+  #topbar { position: sticky; top: 0; z-index: 20; }
+  /* Renders grid scrolls with view */
+  #rd-grid { overflow: visible !important; }
+  #rd-toolbar { position: sticky; top: 0; z-index: 10; background: var(--panel); }
 }
 
 </style>
