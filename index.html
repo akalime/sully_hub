@@ -281,6 +281,108 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
 #bs-node-editor .ed-btn { flex:1; padding:7px; background:var(--accent); border:none; color:var(--bg); font-family:var(--font-ui); font-size:9px; font-weight:700; cursor:pointer; border-radius:2px; letter-spacing:1px; }
 #bs-node-editor .ed-btn.cancel { background:var(--panel2); border:1px solid var(--border2); color:var(--txt); }
 
+
+/* ── RENDERS TAB ── */
+.rd-card { background:var(--panel); border:1px solid var(--border); border-radius:4px; cursor:pointer; overflow:hidden; transition:border-color .15s, transform .1s; position:relative; }
+.rd-card:hover { border-color:var(--border2); transform:translateY(-2px); }
+.rd-card.folder { border-color:var(--amber2); }
+.rd-card.folder:hover { border-color:var(--amber); }
+.rd-thumb { width:100%; aspect-ratio:16/9; object-fit:cover; display:block; background:var(--panel2); }
+.rd-thumb-html { width:100%; aspect-ratio:16/9; background:var(--panel2); display:flex; align-items:center; justify-content:center; font-size:9px; color:var(--txt3); letter-spacing:1px; font-family:var(--font-ui); }
+.rd-thumb-folder { width:100%; aspect-ratio:16/9; background:var(--amber2); display:flex; align-items:center; justify-content:center; font-size:28px; }
+.rd-card-body { padding:8px 10px; }
+.rd-card-name { font-size:10px; color:var(--white); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:2px; }
+.rd-card-meta { font-size:8px; color:var(--txt3); letter-spacing:1px; }
+.rd-card-actions { position:absolute; top:4px; right:4px; display:none; gap:3px; }
+.rd-card:hover .rd-card-actions { display:flex; }
+.rd-act-btn { background:var(--bg); border:1px solid var(--border2); color:var(--txt); font-size:8px; padding:2px 5px; cursor:pointer; border-radius:2px; font-family:var(--font-ui); }
+.rd-act-btn:hover { color:var(--red); border-color:var(--red); }
+.rd-empty { grid-column:1/-1; text-align:center; padding:60px 20px; color:var(--txt3); font-size:10px; letter-spacing:2px; }
+#rd-viewer { display:none; }
+#rd-viewer.open { display:flex; }
+
+
+/* ── MOBILE / RESPONSIVE ── */
+#sb-toggle { display:none; background:none; border:none; color:var(--txt); font-size:18px; cursor:pointer; padding:4px 8px; flex-shrink:0; }
+#sb-overlay { display:none; position:fixed; inset:0; background:#000000a0; z-index:499; }
+
+@media (max-width: 768px) {
+  /* Login box */
+  .lg-box { width: 92vw; }
+
+  /* Modal */
+  #modal { width: 94vw; max-height: 85vh; }
+
+  /* Sidebar — slide-in drawer */
+  #sidebar {
+    position: fixed; left: -240px; top: 0; height: 100vh;
+    width: 240px; z-index: 500;
+    transition: left .2s ease;
+    box-shadow: 4px 0 24px #000a;
+  }
+  #sidebar.open { left: 0; }
+  #sb-overlay.open { display: block; }
+  #sb-toggle { display: block; }
+
+  /* Topbar */
+  #topbar { padding: 0 10px; gap: 8px; }
+  #search-box { width: 100%; min-width: 0; }
+  .tb-label { display: none; }
+
+  /* Dash grid */
+  #dash-grid { grid-template-columns: repeat(2, 1fr); }
+  #dash-body  { grid-template-columns: 1fr; }
+
+  /* Docs grid */
+  #docs-grid { grid-template-columns: repeat(2, 1fr); }
+
+  /* Renders grid */
+  #rd-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important; padding: 10px !important; }
+
+  /* Rd toolbar wrap */
+  #rd-toolbar { flex-wrap: wrap; gap: 6px; }
+  #rd-breadcrumb { width: 100%; order: 10; }
+
+  /* Bug/feature rows — stack on small screens */
+  .bc-row { flex-wrap: wrap; }
+  .bc-sev, .bc-num { font-size: 7px; }
+  .feat-note { display: none; }
+
+  /* Filter bar wrap */
+  .filter-bar { flex-wrap: wrap; gap: 4px; }
+  .filter-btn  { font-size: 8px; padding: 4px 8px; }
+
+  /* Node editor — full width bottom sheet */
+  #bs-node-editor {
+    position: fixed !important;
+    left: 0 !important; right: 0 !important; bottom: 0 !important;
+    top: auto !important;
+    width: 100% !important;
+    border-radius: 8px 8px 0 0;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+
+  /* Brainstorm toolbar wrap */
+  #bs-toolbar { flex-wrap: wrap; gap: 4px; top: 8px !important; left: 8px !important; right: 8px; }
+  #bs-status  { display: none; }
+
+  /* Doc reader */
+  #doc-reader { padding: 0; }
+  #dr-header  { padding: 10px 12px; }
+
+  /* Task/cleanup rows */
+  .task-row, .fi-row { padding: 8px 10px; }
+  .fi-actions { gap: 2px; }
+  .fi-actions button { font-size: 8px; padding: 2px 5px; }
+}
+
+@media (max-width: 420px) {
+  #dash-grid { grid-template-columns: 1fr 1fr; }
+  #docs-grid { grid-template-columns: 1fr; }
+  .rd-card-actions { display: flex !important; } /* always show delete on touch */
+}
+
 </style>
 </head>
 <body>
@@ -364,6 +466,10 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
       <div class="sb-item" onclick="nav('brainstorm')">
         <div class="sb-dot" style="background:var(--purple)"></div>
         <span class="sb-label">Brainstorm</span>
+      </div>
+      <div class="sb-item" onclick="nav('renders')">
+        <div class="sb-dot" style="background:var(--amber)"></div>
+        <span class="sb-label">Renders</span>
       </div>
     </div>
 
@@ -507,7 +613,31 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
         <canvas id="bs-canvas"></canvas>
       </div>
 
+      <div id="view-renders" class="view" style="flex-direction:column;overflow:hidden">
+        <div id="rd-toolbar" style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center;flex-shrink:0">
+          <button class="bs-btn" onclick="rdNewFolder()">+ FOLDER</button>
+          <button class="bs-btn" onclick="rdUpload()" id="rd-upload-btn">↑ UPLOAD</button>
+          <input type="file" id="rd-file-input" multiple accept=".html,image/*" style="display:none" onchange="rdHandleUpload(event)">
+          <div id="rd-breadcrumb" style="flex:1;font-size:10px;color:var(--txt3);letter-spacing:1px"></div>
+          <div id="rd-status" style="font-size:9px;color:var(--txt3)"></div>
+        </div>
+        <div id="rd-grid" style="flex:1;overflow-y:auto;padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;align-content:start"></div>
+      </div>
+
     </div>
+  </div>
+</div>
+
+<!-- RENDERS VIEWER -->
+<div id="rd-viewer" style="display:none;position:fixed;inset:0;z-index:5000;background:#000000ee;flex-direction:column">
+  <div style="display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--panel);flex-shrink:0">
+    <button onclick="rdCloseViewer()" style="background:none;border:1px solid var(--border2);color:var(--txt);font-family:var(--font-ui);font-size:9px;padding:5px 12px;cursor:pointer;border-radius:2px;letter-spacing:1px">✕ CLOSE</button>
+    <div id="rd-viewer-title" style="font-family:var(--font-ui);font-size:10px;color:var(--txt);letter-spacing:1px;flex:1"></div>
+    <a id="rd-viewer-open" href="#" target="_blank" style="font-family:var(--font-ui);font-size:9px;color:var(--accent);letter-spacing:1px;text-decoration:none">↗ OPEN IN TAB</a>
+  </div>
+  <div style="flex:1;overflow:hidden;position:relative">
+    <iframe id="rd-viewer-iframe" style="width:100%;height:100%;border:none;display:none"></iframe>
+    <img id="rd-viewer-img" style="max-width:100%;max-height:100%;object-fit:contain;display:none;margin:auto;position:absolute;inset:0">
   </div>
 </div>
 
@@ -588,7 +718,7 @@ function nav(view) {
   document.querySelectorAll('.sb-item').forEach(i => i.classList.remove('active'));
   document.getElementById('view-' + view).classList.add('active');
   document.querySelector(`[onclick="nav('${view}')"]`).classList.add('active');
-  const titles = {dashboard:'Dashboard',docs:'All Documents',bugs:'Known Bugs',features:'Feature Status',roadmap:'Roadmap',changelog:'Changelog',decisions:'Decisions',cleanup:'Cleanup List',brainstorm:'Brainstorm'};
+  const titles = {dashboard:'Dashboard',docs:'All Documents',bugs:'Known Bugs',features:'Feature Status',roadmap:'Roadmap',changelog:'Changelog',decisions:'Decisions',cleanup:'Cleanup List',brainstorm:'Brainstorm',renders:'Renders'};
   document.getElementById('tb-title').textContent = titles[view] || view;
   if(view === 'bugs') renderBugs();
   if(view === 'features') renderFeatures();
@@ -597,6 +727,7 @@ function nav(view) {
   if(view === 'decisions') renderDecisions();
   if(view === 'cleanup') renderCleanup();
   if(view === 'brainstorm') bsInit();
+  if(view === 'renders') rdInit();
   if(view === 'docs') renderDocs();
   if(view === 'dashboard') renderDashboard();
 }
@@ -1265,82 +1396,78 @@ function bsDraw() {
   const ctx = BS.ctx;
   ctx.clearRect(0, 0, BS.W, BS.H);
 
-  // Grid
+  // Grid (pure screen space)
   ctx.save();
   ctx.strokeStyle = '#161e28';
   ctx.lineWidth = 1;
   const gSize = 40 * BS.scale;
-  const ox = BS.pan.x % gSize;
-  const oy = BS.pan.y % gSize;
+  const ox = ((BS.pan.x % gSize) + gSize) % gSize;
+  const oy = ((BS.pan.y % gSize) + gSize) % gSize;
   for (let x = ox; x < BS.W; x += gSize) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,BS.H); ctx.stroke(); }
   for (let y = oy; y < BS.H; y += gSize) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(BS.W,y); ctx.stroke(); }
   ctx.restore();
 
-  ctx.save();
-  ctx.translate(BS.pan.x, BS.pan.y);
-  ctx.scale(BS.scale, BS.scale);
-
-  // Edges first
+  // Edges
   BS.edges.forEach(e => bsDrawEdge(ctx, e));
 
-  // Connecting preview
+  // Connect preview (screen space)
   if (BS.connecting && BS.connectFrom !== null && BS._mouseWorld) {
     const n = BS.nodes[BS.connectFrom];
     if (n) {
+      const ax = n.x * BS.scale + BS.pan.x + (n.w/2) * BS.scale;
+      const ay = n.y * BS.scale + BS.pan.y + (n.h/2) * BS.scale;
+      const mx = BS._mouseWorld.x * BS.scale + BS.pan.x;
+      const my = BS._mouseWorld.y * BS.scale + BS.pan.y;
       ctx.save();
       ctx.strokeStyle = '#a855f780';
-      ctx.lineWidth = 2 / BS.scale;
-      ctx.setLineDash([6/BS.scale, 4/BS.scale]);
-      ctx.beginPath();
-      ctx.moveTo(n.x + n.w/2, n.y + n.h/2);
-      ctx.lineTo(BS._mouseWorld.x, BS._mouseWorld.y);
-      ctx.stroke();
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(mx, my); ctx.stroke();
       ctx.setLineDash([]);
       ctx.restore();
     }
   }
 
-  // Groups first (render behind)
-  BS.nodes.filter(n=>n.type==='group').forEach((n,i) => bsDrawNode(ctx, n, i));
-  BS.nodes.filter(n=>n.type!=='group').forEach((n,i) => {
-    const idx = BS.nodes.indexOf(n);
-    bsDrawNode(ctx, n, idx);
-  });
-  ctx.restore();
+  // Groups behind, then regular nodes
+  BS.nodes.filter(n => n.type === 'group').forEach((n, _, arr) => bsDrawNode(ctx, n, BS.nodes.indexOf(n)));
+  BS.nodes.filter(n => n.type !== 'group').forEach(n => bsDrawNode(ctx, n, BS.nodes.indexOf(n)));
 }
+
+// World→screen
+function wx(x) { return x * BS.scale + BS.pan.x; }
+function wy(y) { return y * BS.scale + BS.pan.y; }
+function ws(s) { return s * BS.scale; }
 
 function bsDrawEdge(ctx, e) {
   const a = BS.nodes[e.from], b = BS.nodes[e.to];
   if (!a || !b) return;
-  const ax = a.x + a.w/2, ay = a.y + a.h/2;
-  const bx = b.x + b.w/2, by = b.y + b.h/2;
+  // centres in screen space
+  const ax = wx(a.x + a.w/2), ay = wy(a.y + a.h/2);
+  const bx = wx(b.x + b.w/2), by = wy(b.y + b.h/2);
+  const msx = (ax+bx)/2, msy = (ay+by)/2;
+  const cx1 = ax + (msx-ax)*0.5, cy1 = ay;
+  const cx2 = bx + (msx-bx)*0.5, cy2 = by;
   ctx.save();
   ctx.strokeStyle = '#a855f740';
-  ctx.lineWidth = 1.5 / BS.scale;
-  // Bezier curve
-  const mx = (ax+bx)/2, my = (ay+by)/2;
-  const cx1 = ax + (mx-ax)*0.5, cy1 = ay;
-  const cx2 = bx + (mx-bx)*0.5, cy2 = by;
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(ax, ay);
   ctx.bezierCurveTo(cx1, cy1, cx2, cy2, bx, by);
   ctx.stroke();
   // Arrow
   const angle = Math.atan2(by - cy2, bx - cx2);
-  const arrowSize = 8 / BS.scale;
+  const ar = 8;
   ctx.fillStyle = '#a855f740';
   ctx.beginPath();
   ctx.moveTo(bx, by);
-  ctx.lineTo(bx - arrowSize*Math.cos(angle-0.4), by - arrowSize*Math.sin(angle-0.4));
-  ctx.lineTo(bx - arrowSize*Math.cos(angle+0.4), by - arrowSize*Math.sin(angle+0.4));
-  ctx.closePath();
-  ctx.fill();
-  // Label
+  ctx.lineTo(bx - ar*Math.cos(angle-0.4), by - ar*Math.sin(angle-0.4));
+  ctx.lineTo(bx - ar*Math.cos(angle+0.4), by - ar*Math.sin(angle+0.4));
+  ctx.closePath(); ctx.fill();
   if (e.label) {
     ctx.fillStyle = '#6888a0';
-    ctx.font = `${10/BS.scale}px 'Space Mono'`;
+    ctx.font = "10px 'Space Mono'";
     ctx.textAlign = 'center';
-    ctx.fillText(e.label, mx, my - 6/BS.scale);
+    ctx.fillText(e.label, msx, msy - 6);
   }
   ctx.restore();
 }
@@ -1348,88 +1475,170 @@ function bsDrawEdge(ctx, e) {
 function bsDrawNode(ctx, n, idx) {
   const col = BS_COLORS[n.type] || BS_COLORS.note;
   const isSelected = BS.dragging === idx || (BS.connecting && BS.connectFrom === idx);
-  const pad = 14;
+
+  // Screen coords
+  const sx = wx(n.x), sy = wy(n.y);
+  const sw = ws(n.w), sh = ws(n.h);
+  const pad = 12; // fixed screen pixels
 
   ctx.save();
 
   if (n.type === 'html') {
-    const isSelected = BS.dragging === idx || (BS.connecting && BS.connectFrom === idx);
-    bsDrawHtmlNode(ctx, n, isSelected);
+    bsDrawHtmlNode(ctx, n, idx, isSelected, sx, sy, sw, sh, pad);
+    ctx.restore();
     return;
   }
 
   if (n.type === 'group') {
     ctx.fillStyle = col.bg + '80';
     ctx.strokeStyle = isSelected ? col.border : col.border + '60';
-    ctx.lineWidth = (isSelected ? 2 : 1) / BS.scale;
-    ctx.setLineDash([8/BS.scale, 4/BS.scale]);
-    bsRoundRect(ctx, n.x, n.y, n.w, n.h, 8/BS.scale);
+    ctx.lineWidth = isSelected ? 2 : 1;
+    ctx.setLineDash([8, 4]);
+    bsRoundRect(ctx, sx, sy, sw, sh, 8);
     ctx.fill(); ctx.stroke();
     ctx.setLineDash([]);
     ctx.fillStyle = col.label + '90';
-    ctx.font = `bold ${11/BS.scale}px 'Space Mono'`;
+    ctx.font = "bold 11px 'Space Mono'";
     ctx.textAlign = 'left';
-    ctx.fillText((n.title||'GROUP').toUpperCase(), n.x + pad, n.y + 18/BS.scale);
+    ctx.fillText((n.title||'GROUP').toUpperCase(), sx + pad, sy + 16);
     ctx.restore();
     return;
   }
 
   // Shadow
   ctx.shadowColor = isSelected ? col.border + '60' : '#00000080';
-  ctx.shadowBlur = isSelected ? 20/BS.scale : 8/BS.scale;
+  ctx.shadowBlur  = isSelected ? 18 : 8;
 
-  // Card background
-  ctx.fillStyle = col.bg;
+  // Card bg
+  ctx.fillStyle   = col.bg;
   ctx.strokeStyle = isSelected ? col.border : col.border + '60';
-  ctx.lineWidth = (isSelected ? 2 : 1) / BS.scale;
-  bsRoundRect(ctx, n.x, n.y, n.w, n.h, 6/BS.scale);
+  ctx.lineWidth   = isSelected ? 2 : 1;
+  bsRoundRect(ctx, sx, sy, sw, sh, 6);
   ctx.fill(); ctx.stroke();
   ctx.shadowBlur = 0;
 
   // Type chip
-  const chipY = n.y + pad;
+  const chipY = sy + pad + 4;
+  const chipLabel = n.type.toUpperCase();
+  ctx.font = "bold 8px 'Space Mono'";
+  const chipW = ctx.measureText(chipLabel).width + 10;
   ctx.fillStyle = col.border + '30';
-  bsRoundRect(ctx, n.x + pad, chipY - 9/BS.scale, (n.type.length * 7 + 10)/BS.scale, 14/BS.scale, 2/BS.scale);
+  bsRoundRect(ctx, sx + pad, chipY - 9, chipW, 14, 2);
   ctx.fill();
   ctx.fillStyle = col.label;
-  ctx.font = `bold ${8/BS.scale}px 'Space Mono'`;
-  ctx.textAlign = 'left';
-  ctx.fillText(n.type.toUpperCase(), n.x + pad + 4/BS.scale, chipY + 1/BS.scale);
+  ctx.fillText(chipLabel, sx + pad + 5, chipY + 1);
 
-  // Title
+  // Title — fixed 12px, clipped to card width
   ctx.fillStyle = '#eef6ff';
-  ctx.font = `bold ${12/BS.scale}px 'Syne'`;
-  const titleY = chipY + 20/BS.scale;
-  bsWrapText(ctx, n.title || 'Untitled', n.x + pad, titleY, n.w - pad*2, 16/BS.scale, 2);
+  ctx.font = "bold 12px 'Syne'";
+  ctx.textAlign = 'left';
+  const titleY = chipY + 18;
+  const maxTW = sw - pad * 2;
+  bsWrapText(ctx, n.title || 'Untitled', sx + pad, titleY, maxTW, 16, 2);
 
-  // Notes
+  // Notes — fixed 10px
   if (n.notes) {
     ctx.fillStyle = '#6888a0';
-    ctx.font = `${10/BS.scale}px 'Space Mono'`;
-    const notesY = titleY + 36/BS.scale;
-    bsWrapText(ctx, n.notes, n.x + pad, notesY, n.w - pad*2, 14/BS.scale, 3);
+    ctx.font = "10px 'Space Mono'";
+    const notesY = titleY + 34;
+    bsWrapText(ctx, n.notes, sx + pad, notesY, maxTW, 13, 3);
   }
 
   // Link badge
   if (n.link) {
-    ctx.fillStyle = col.border + '40';
-    const linkY = n.y + n.h - 22/BS.scale;
-    ctx.font = `${9/BS.scale}px 'Space Mono'`;
+    ctx.font = "9px 'Space Mono'";
     ctx.fillStyle = col.label + '80';
-    ctx.fillText('⟶ ' + n.link, n.x + pad, linkY);
+    // clip to card
+    ctx.save();
+    bsRoundRect(ctx, sx, sy, sw, sh, 6);
+    ctx.clip();
+    ctx.fillText('⟶ ' + n.link, sx + pad, sy + sh - 10);
+    ctx.restore();
   }
 
-  // Image thumbnail
+  // Image
   if (n._img) {
     try {
-      const imgY = n.y + (n.notes ? 100 : 70) / BS.scale;
-      const imgH = 60 / BS.scale;
-      const imgW = n.w - pad*2;
-      ctx.drawImage(n._img, n.x + pad, imgY, imgW, imgH);
+      const imgY = sy + (n.notes ? 105 : 75);
+      const imgH = Math.min(60, sh - imgY + sy - 10);
+      if (imgH > 10) ctx.drawImage(n._img, sx + pad, imgY, sw - pad*2, imgH);
     } catch(e) {}
   }
 
   ctx.restore();
+}
+
+function bsDrawHtmlNode(ctx, n, idx, isSelected, sx, sy, sw, sh, pad) {
+  const col = BS_COLORS.html;
+  ctx.shadowColor = isSelected ? col.border + '60' : '#00000080';
+  ctx.shadowBlur  = isSelected ? 18 : 8;
+  ctx.fillStyle   = col.bg;
+  ctx.strokeStyle = isSelected ? col.border : col.border + '60';
+  ctx.lineWidth   = isSelected ? 2 : 1;
+  bsRoundRect(ctx, sx, sy, sw, sh, 6);
+  ctx.fill(); ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Header strip
+  ctx.fillStyle = col.border + '25';
+  ctx.fillRect(sx, sy, sw, 24);
+  ctx.fillStyle = col.label;
+  ctx.font = "bold 9px 'Space Mono'";
+  ctx.textAlign = 'left';
+  ctx.fillText('⬡ HTML', sx + pad, sy + 15);
+  if (n.htmlName) {
+    ctx.fillStyle = '#6888a0';
+    ctx.font = "8px 'Space Mono'";
+    const nameX = sx + pad + 52;
+    // clip filename to card edge
+    ctx.save();
+    bsRoundRect(ctx, sx, sy, sw, sh, 6);
+    ctx.clip();
+    ctx.fillText(n.htmlName, nameX, sy + 15);
+    ctx.restore();
+  }
+
+  // Title
+  ctx.fillStyle = '#eef6ff';
+  ctx.font = "bold 12px 'Syne'";
+  ctx.fillText(n.title || 'Untitled', sx + pad, sy + 40);
+
+  // Thumbnail area
+  const thumbY = sy + 50;
+  const thumbH = sh - 58;
+  const thumbW = sw - pad * 2;
+  if (thumbH > 10) {
+    if (n._thumb) {
+      ctx.save();
+      bsRoundRect(ctx, sx + pad, thumbY, thumbW, thumbH, 3);
+      ctx.clip();
+      ctx.drawImage(n._thumb, sx + pad, thumbY, thumbW, thumbH);
+      ctx.restore();
+      ctx.strokeStyle = col.border + '40';
+      ctx.lineWidth = 1;
+      bsRoundRect(ctx, sx + pad, thumbY, thumbW, thumbH, 3);
+      ctx.stroke();
+    } else if (n._thumbLoading) {
+      ctx.fillStyle = '#0a1a10';
+      bsRoundRect(ctx, sx + pad, thumbY, thumbW, thumbH, 3);
+      ctx.fill();
+      ctx.fillStyle = col.border + '60';
+      ctx.font = "9px 'Space Mono'";
+      ctx.textAlign = 'center';
+      ctx.fillText('RENDERING...', sx + sw/2, thumbY + thumbH/2);
+    } else {
+      ctx.fillStyle = '#0a1212';
+      bsRoundRect(ctx, sx + pad, thumbY, thumbW, thumbH, 3);
+      ctx.fill();
+      ctx.fillStyle = col.border + '30';
+      ctx.font = "9px 'Space Mono'";
+      ctx.textAlign = 'center';
+      ctx.fillText('NO PREVIEW', sx + sw/2, thumbY + thumbH/2 - 7);
+      ctx.fillStyle = '#3a5060';
+      ctx.font = "8px 'Space Mono'";
+      ctx.fillText('RIGHT-CLICK → EDIT', sx + sw/2, thumbY + thumbH/2 + 8);
+    }
+  }
 }
 
 function bsRoundRect(ctx, x, y, w, h, r) {
@@ -1446,14 +1655,15 @@ function bsWrapText(ctx, text, x, y, maxW, lineH, maxLines) {
   const words = String(text).split(' ');
   let line = '', lines = [];
   for (const w of words) {
-    const test = line + (line ? ' ' : '') + w;
+    const test = line ? line + ' ' + w : w;
     if (ctx.measureText(test).width > maxW && line) {
-      lines.push(line); line = w;
-      if (lines.length >= maxLines) break;
+      lines.push(line);
+      line = w;
+      if (lines.length >= maxLines) { lines[maxLines-1] += '…'; break; }
     } else { line = test; }
   }
-  if (lines.length < maxLines) lines.push(line);
-  lines.forEach((l, i) => ctx.fillText(l, x, y + i*lineH));
+  if (lines.length < maxLines && line) lines.push(line);
+  lines.forEach((l, i) => ctx.fillText(l, x, y + i * lineH));
 }
 
 // ── Event Handling ────────────────────────────────────────
@@ -1476,10 +1686,10 @@ function bsWorldPos(e) {
   };
 }
 
-function bsHitNode(wx, wy) {
+function bsHitNode(worldX, worldY) {
   for (let i = BS.nodes.length-1; i >= 0; i--) {
     const n = BS.nodes[i];
-    if (wx >= n.x && wx <= n.x+n.w && wy >= n.y && wy <= n.y+n.h) return i;
+    if (worldX >= n.x && worldX <= n.x+n.w && worldY >= n.y && worldY <= n.y+n.h) return i;
   }
   return -1;
 }
@@ -1858,84 +2068,7 @@ async function bsClearHtml(idx) {
   bsScheduleSave();
 }
 
-// iframe system removed — using html2canvas thumbnail approach
-
-// ── HTML node draw — renders thumbnail captured via html2canvas ──
-function bsDrawHtmlNode(ctx, n, isSelected) {
-  const col = BS_COLORS.html;
-  const pad = 12;
-  ctx.save();
-  ctx.shadowColor = isSelected ? col.border + '60' : '#00000080';
-  ctx.shadowBlur  = isSelected ? 20/BS.scale : 8/BS.scale;
-  ctx.fillStyle   = col.bg;
-  ctx.strokeStyle = isSelected ? col.border : col.border + '60';
-  ctx.lineWidth   = (isSelected ? 2 : 1) / BS.scale;
-  bsRoundRect(ctx, n.x, n.y, n.w, n.h, 6/BS.scale);
-  ctx.fill(); ctx.stroke();
-  ctx.shadowBlur = 0;
-
-  // Header strip
-  ctx.fillStyle = col.border + '25';
-  ctx.fillRect(n.x, n.y, n.w, 28/BS.scale);
-  ctx.fillStyle = col.label;
-  ctx.font = `bold ${9/BS.scale}px 'Space Mono'`;
-  ctx.textAlign = 'left';
-  ctx.fillText('⬡ HTML', n.x + pad, n.y + 10/BS.scale);
-  ctx.fillStyle = '#6888a0';
-  ctx.font = `${8/BS.scale}px 'Space Mono'`;
-  ctx.fillText(n.htmlName || '', n.x + pad + 44/BS.scale, n.y + 10/BS.scale);
-
-  // Title
-  ctx.fillStyle = '#eef6ff';
-  ctx.font = `bold ${12/BS.scale}px 'Syne'`;
-  ctx.textAlign = 'left';
-  ctx.fillText(n.title || 'Untitled', n.x + pad, n.y + 42/BS.scale);
-
-  // Thumbnail area
-  const thumbY = n.y + 54/BS.scale;
-  const thumbW = n.w - pad*2;
-  const thumbH = n.h - 70/BS.scale;
-
-  if (n._thumb) {
-    // Draw captured thumbnail
-    ctx.save();
-    bsRoundRect(ctx, n.x + pad, thumbY, thumbW, thumbH, 3/BS.scale);
-    ctx.clip();
-    ctx.drawImage(n._thumb, n.x + pad, thumbY, thumbW, thumbH);
-    ctx.restore();
-    // Subtle overlay border
-    ctx.strokeStyle = col.border + '40';
-    ctx.lineWidth = 1/BS.scale;
-    bsRoundRect(ctx, n.x + pad, thumbY, thumbW, thumbH, 3/BS.scale);
-    ctx.stroke();
-  } else if (n._thumbLoading) {
-    // Loading state
-    ctx.fillStyle = '#0a1a10';
-    bsRoundRect(ctx, n.x + pad, thumbY, thumbW, thumbH, 3/BS.scale);
-    ctx.fill();
-    ctx.fillStyle = col.border + '60';
-    ctx.font = `${9/BS.scale}px 'Space Mono'`;
-    ctx.textAlign = 'center';
-    ctx.fillText('RENDERING...', n.x + n.w/2, thumbY + thumbH/2);
-  } else {
-    // No thumbnail yet — show placeholder
-    ctx.fillStyle = '#0a1212';
-    bsRoundRect(ctx, n.x + pad, thumbY, thumbW, thumbH, 3/BS.scale);
-    ctx.fill();
-    ctx.fillStyle = col.border + '30';
-    ctx.font = `${9/BS.scale}px 'Space Mono'`;
-    ctx.textAlign = 'center';
-    ctx.fillText('NO PREVIEW', n.x + n.w/2, thumbY + thumbH/2 - 7/BS.scale);
-    ctx.fillStyle = '#3a5060';
-    ctx.font = `${8/BS.scale}px 'Space Mono'`;
-    ctx.fillText('RIGHT-CLICK → CAPTURE', n.x + n.w/2, thumbY + thumbH/2 + 8/BS.scale);
-  }
-  ctx.restore();
-}
-
-// ── Patch bsDraw to call syncIframes after drawing ────────
-
-// ── Patch bsDrawNode to handle html type ─────────────────
+// (old bsDrawHtmlNode removed — screen-space version inlined in bsDrawNode)
 
 // ── Persistence ───────────────────────────────────────────
 function bsScheduleSave() {
@@ -1980,6 +2113,256 @@ async function bsLoadFromDB() {
   } catch(e) { console.error('[brainstorm] parse failed', e); }
   bsDraw();
 }
+
+
+
+// ══════════════════════════════════════════════════════════
+// RENDERS TAB
+// ══════════════════════════════════════════════════════════
+
+const RD = {
+  currentFolder: '',   // empty = root
+  items: [],           // cached listing
+  loading: false,
+};
+
+const RD_BUCKET = 'hub-renders';
+const RD_PREFIX = 'renders/';  // separate from brainstorm/ uploads
+
+async function rdInit() {
+  await rdLoad();
+}
+
+function rdSetStatus(msg) {
+  const el = document.getElementById('rd-status');
+  if (el) el.textContent = msg;
+}
+
+function rdUpdateBreadcrumb() {
+  const el = document.getElementById('rd-breadcrumb');
+  if (!el) return;
+  const parts = RD.currentFolder ? RD.currentFolder.split('/').filter(Boolean) : [];
+  let html = `<span style="cursor:pointer;color:var(--accent)" onclick="rdNavigate('')">ROOT</span>`;
+  let path = '';
+  parts.forEach(p => {
+    path += p + '/';
+    const captured = path.slice(0, -1);
+    html += ` <span style="color:var(--txt3)">›</span> <span style="cursor:pointer;color:var(--txt)" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--txt)'" onclick="rdNavigate('${captured}')">${p}</span>`;
+  });
+  el.innerHTML = html;
+}
+
+async function rdLoad() {
+  if (RD.loading) return;
+  RD.loading = true;
+  rdSetStatus('loading...');
+  rdUpdateBreadcrumb();
+
+  const listPath = RD_PREFIX + (RD.currentFolder ? RD.currentFolder + '/' : '');
+
+  const { data, error } = await supa.storage
+    .from(RD_BUCKET)
+    .list(listPath, { limit: 200, sortBy: { column: 'name', order: 'asc' } });
+
+  RD.loading = false;
+
+  if (error) {
+    rdSetStatus('load failed: ' + error.message);
+    console.error('[renders]', error);
+    return;
+  }
+
+  RD.items = data || [];
+  rdSetStatus(RD.items.length + ' items');
+  rdRender();
+}
+
+function rdRender() {
+  const grid = document.getElementById('rd-grid');
+  if (!grid) return;
+
+  const folders = RD.items.filter(i => i.id === null); // folders have null id
+  const files   = RD.items.filter(i => i.id !== null);
+
+  if (RD.items.length === 0) {
+    grid.innerHTML = `<div class="rd-empty">NO FILES YET<br><br>Click UPLOAD to add renders or + FOLDER to organise</div>`;
+    return;
+  }
+
+  let html = '';
+
+  // Back button if in subfolder
+  if (RD.currentFolder) {
+    const parentPath = RD.currentFolder.includes('/')
+      ? RD.currentFolder.split('/').slice(0, -1).join('/')
+      : '';
+    html += `<div class="rd-card folder" onclick="rdNavigate('${parentPath}')">
+      <div class="rd-thumb-folder">↑</div>
+      <div class="rd-card-body"><div class="rd-card-name">.. BACK</div></div>
+    </div>`;
+  }
+
+  // Folders
+  folders.forEach(f => {
+    const folderPath = RD.currentFolder ? RD.currentFolder + '/' + f.name : f.name;
+    html += `<div class="rd-card folder" onclick="rdNavigate('${folderPath}')">
+      <div class="rd-thumb-folder">📁</div>
+      <div class="rd-card-body">
+        <div class="rd-card-name">${f.name}</div>
+        <div class="rd-card-meta">FOLDER</div>
+      </div>
+      <div class="rd-card-actions">
+        <button class="rd-act-btn" onclick="event.stopPropagation();rdDeleteFolder('${folderPath}')">✕</button>
+      </div>
+    </div>`;
+  });
+
+  // Files
+  files.forEach(f => {
+    const filePath = RD_PREFIX + (RD.currentFolder ? RD.currentFolder + '/' : '') + f.name;
+    const { data: urlData } = supa.storage.from(RD_BUCKET).getPublicUrl(filePath);
+    const url = urlData.publicUrl;
+    const isHtml  = f.name.endsWith('.html') || f.name.endsWith('.htm');
+    const isImage = /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(f.name);
+    const sizeKb  = f.metadata?.size ? Math.round(f.metadata.size / 1024) + 'kb' : '';
+
+    let thumb = '';
+    if (isImage) {
+      thumb = `<img class="rd-thumb" src="${url}" loading="lazy" onerror="this.style.display='none'">`;
+    } else if (isHtml) {
+      thumb = `<div class="rd-thumb-html">⬡ HTML</div>`;
+    } else {
+      thumb = `<div class="rd-thumb-html">FILE</div>`;
+    }
+
+    html += `<div class="rd-card" onclick="rdOpen('${url}', '${f.name}', ${isImage})">
+      ${thumb}
+      <div class="rd-card-body">
+        <div class="rd-card-name">${f.name}</div>
+        <div class="rd-card-meta">${isHtml ? 'HTML' : isImage ? 'IMAGE' : 'FILE'}${sizeKb ? ' · ' + sizeKb : ''}</div>
+      </div>
+      <div class="rd-card-actions">
+        <button class="rd-act-btn" onclick="event.stopPropagation();rdDelete('${filePath}', '${f.name}')">✕</button>
+      </div>
+    </div>`;
+  });
+
+  grid.innerHTML = html;
+}
+
+function rdNavigate(folderPath) {
+  RD.currentFolder = folderPath;
+  rdLoad();
+}
+
+// ── Upload ────────────────────────────────────────────────
+function rdUpload() {
+  document.getElementById('rd-file-input').click();
+}
+
+async function rdHandleUpload(e) {
+  const files = Array.from(e.target.files);
+  if (!files.length) return;
+
+  rdSetStatus('uploading ' + files.length + ' file(s)...');
+  let done = 0;
+
+  for (const file of files) {
+    const safeName = file.name.replace(/[^a-zA-Z0-9._\-]/g, '_');
+    const uploadPath = RD_PREFIX + (RD.currentFolder ? RD.currentFolder + '/' : '') + safeName;
+
+    const { error } = await supa.storage
+      .from(RD_BUCKET)
+      .upload(uploadPath, file, { upsert: true });
+
+    if (error) {
+      showToast('Upload failed: ' + file.name + ' — ' + error.message, 'error');
+    } else {
+      done++;
+    }
+  }
+
+  e.target.value = ''; // reset input
+  rdSetStatus(done + ' uploaded');
+  showToast(done + ' file(s) uploaded', 'success');
+  rdLoad();
+}
+
+// ── Folder ────────────────────────────────────────────────
+async function rdNewFolder() {
+  const name = prompt('Folder name:');
+  if (!name || !name.trim()) return;
+  const safeName = name.trim().replace(/[^a-zA-Z0-9_\-]/g, '_');
+
+  // Supabase Storage doesn't have real folders — create a .keep placeholder
+  const folderPath = RD_PREFIX + (RD.currentFolder ? RD.currentFolder + '/' : '') + safeName + '/.keep';
+  const { error } = await supa.storage
+    .from(RD_BUCKET)
+    .upload(folderPath, new Blob([''], {type:'text/plain'}), { upsert: true });
+
+  if (error) { showToast('Folder create failed: ' + error.message, 'error'); return; }
+  showToast('Folder created: ' + safeName, 'success');
+  rdLoad();
+}
+
+async function rdDeleteFolder(folderPath) {
+  if (!confirm('Delete folder "' + folderPath + '" and all its contents?')) return;
+  // List everything inside then delete
+  const { data } = await supa.storage.from(RD_BUCKET).list(RD_PREFIX + folderPath + '/');
+  if (data && data.length) {
+    const paths = data.map(f => RD_PREFIX + folderPath + '/' + f.name);
+    await supa.storage.from(RD_BUCKET).remove(paths);
+  }
+  showToast('Folder deleted', 'success');
+  rdLoad();
+}
+
+// ── Delete file ───────────────────────────────────────────
+async function rdDelete(filePath, name) {
+  if (!confirm('Delete "' + name + '"?')) return;
+  const { error } = await supa.storage.from(RD_BUCKET).remove([filePath]);
+  if (error) { showToast('Delete failed: ' + error.message, 'error'); return; }
+  showToast('Deleted: ' + name, 'success');
+  rdLoad();
+}
+
+// ── Viewer ────────────────────────────────────────────────
+function rdOpen(url, name, isImage) {
+  const viewer = document.getElementById('rd-viewer');
+  const iframe  = document.getElementById('rd-viewer-iframe');
+  const img     = document.getElementById('rd-viewer-img');
+  const title   = document.getElementById('rd-viewer-title');
+  const openBtn = document.getElementById('rd-viewer-open');
+
+  title.textContent = name;
+  openBtn.href = url;
+
+  if (isImage) {
+    img.src = url;
+    img.style.display = 'block';
+    iframe.style.display = 'none';
+    iframe.src = '';
+  } else {
+    iframe.src = url;
+    iframe.style.display = 'block';
+    img.style.display = 'none';
+    img.src = '';
+  }
+
+  viewer.classList.add('open');
+}
+
+function rdCloseViewer() {
+  const viewer = document.getElementById('rd-viewer');
+  viewer.classList.remove('open');
+  document.getElementById('rd-viewer-iframe').src = '';
+  document.getElementById('rd-viewer-img').src = '';
+}
+
+// Close viewer on Escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') rdCloseViewer();
+});
 
 
 // ══════════════════════════════════════════════════════════
@@ -2257,6 +2640,30 @@ document.getElementById('lg-password').addEventListener('keydown', e => {
 document.getElementById('lg-email').addEventListener('keydown', e => {
   if(e.key === 'Enter') document.getElementById('lg-password').focus();
 });
+
+// ── Sidebar mobile toggle ─────────────────────────────────
+function sbToggle() {
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('sb-overlay');
+  const open = sb.classList.toggle('open');
+  ov.classList.toggle('open', open);
+}
+function sbClose() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sb-overlay').classList.remove('open');
+}
+// Close sidebar on nav on mobile
+const _origNav = nav;
+
+// Close sidebar when navigating on mobile
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.sb-item').forEach(item => {
+    item.addEventListener('click', () => {
+      if (window.innerWidth <= 768) sbClose();
+    });
+  });
+});
+
 </script>
 </body>
 </html>
