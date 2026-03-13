@@ -2875,13 +2875,10 @@ async function rdOpen(url, name, isImage) {
   try {
     const resp = await fetch(url);
     const html = await resp.text();
-    // Use document.write — most reliable cross-browser way to inject HTML into iframe
-    iframe.src = 'about:blank';
-    await new Promise(function(r) { setTimeout(r, 50); });
-    const doc = iframe.contentDocument || iframe.contentWindow.document;
-    doc.open();
-    doc.write(html);
-    doc.close();
+    // Encode as base64 data URI — Chrome Android renders this reliably
+    const b64 = btoa(unescape(encodeURIComponent(html)));
+    const dataUrl = 'data:text/html;base64,' + b64;
+    iframe.src = dataUrl;
     title.textContent = name;
   } catch(e) {
     iframe.src = url;
