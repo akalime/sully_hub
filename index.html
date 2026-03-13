@@ -443,6 +443,62 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
   #rd-toolbar { position: sticky; top: 0; z-index: 10; background: var(--panel); }
 }
 
+
+/* ── BOTTOM NAV (mobile only) ── */
+#bottom-nav {
+  display: none;
+}
+@media (max-width: 768px) {
+  #bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 58px;
+    background: var(--panel);
+    border-top: 1px solid var(--border2);
+    z-index: 400;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .bn-item {
+    flex: 1;
+    min-width: 56px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    background: none;
+    border: none;
+    color: var(--txt3);
+    font-family: var(--font-ui);
+    cursor: pointer;
+    padding: 4px 2px;
+    transition: color .15s;
+    border-top: 2px solid transparent;
+  }
+  .bn-item.active {
+    color: var(--accent);
+    border-top-color: var(--accent);
+  }
+  .bn-icon { font-size: 14px; line-height: 1; }
+  .bn-label { font-size: 7px; letter-spacing: 1px; white-space: nowrap; }
+
+  /* Push content above bottom nav */
+  #main { padding-bottom: 58px; }
+
+  /* Hide topbar hamburger since we have bottom nav */
+  #sb-toggle { display: none; }
+
+  /* Topbar — simplified, just title */
+  #topbar {
+    padding: 0 12px;
+    height: 44px;
+  }
+  #search-box { display: none; }
+  .tb-btn { font-size: 8px; padding: 5px 8px; }
+}
+
 </style>
 </head>
 <body>
@@ -778,6 +834,10 @@ function nav(view) {
   document.querySelectorAll('.sb-item').forEach(i => i.classList.remove('active'));
   document.getElementById('view-' + view).classList.add('active');
   document.querySelector(`[onclick="nav('${view}')"]`).classList.add('active');
+  // Update bottom nav active state
+  document.querySelectorAll('.bn-item').forEach(i => i.classList.remove('active'));
+  const bnActive = document.querySelector(`.bn-item[data-view="${view}"]`);
+  if (bnActive) bnActive.classList.add('active');
   const titles = {dashboard:'Dashboard',docs:'All Documents',bugs:'Known Bugs',features:'Feature Status',roadmap:'Roadmap',changelog:'Changelog',decisions:'Decisions',cleanup:'Cleanup List',brainstorm:'Brainstorm',renders:'Renders'};
   document.getElementById('tb-title').textContent = titles[view] || view;
   if(view === 'bugs') renderBugs();
@@ -2725,5 +2785,13 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 </script>
+<div id="bottom-nav">
+  <button class="bn-item" onclick="nav('dashboard')" data-view="dashboard"><span class="bn-icon">⊞</span><span class="bn-label">Dashboard</span></button>
+  <button class="bn-item" onclick="nav('bugs')" data-view="bugs"><span class="bn-icon">⬤</span><span class="bn-label">Bugs</span></button>
+  <button class="bn-item" onclick="nav('features')" data-view="features"><span class="bn-icon">◈</span><span class="bn-label">Features</span></button>
+  <button class="bn-item" onclick="nav('roadmap')" data-view="roadmap"><span class="bn-icon">▶</span><span class="bn-label">Roadmap</span></button>
+  <button class="bn-item" onclick="nav('brainstorm')" data-view="brainstorm"><span class="bn-icon">◉</span><span class="bn-label">Brainstorm</span></button>
+  <button class="bn-item" onclick="nav('renders')" data-view="renders"><span class="bn-icon">⬡</span><span class="bn-label">Renders</span></button>
+</div>
 </body>
 </html>
