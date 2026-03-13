@@ -2731,14 +2731,20 @@ function rdRender() {
     </div>`;
   });
 
-  // Files
-  files.forEach(f => {
+  // Files — store in array, reference by index to avoid URL injection issues
+  RD._fileIndex = RD._fileIndex || [];
+  RD._fileIndex = [];
+
+  files.forEach((f, fi) => {
     const filePath = RD_PREFIX + (RD.currentFolder ? RD.currentFolder + '/' : '') + f.name;
     const { data: urlData } = supa.storage.from(RD_BUCKET).getPublicUrl(filePath);
     const url = urlData.publicUrl;
     const isHtml  = f.name.endsWith('.html') || f.name.endsWith('.htm');
     const isImage = /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(f.name);
     const sizeKb  = f.metadata?.size ? Math.round(f.metadata.size / 1024) + 'kb' : '';
+
+    // Store file info for safe retrieval by index
+    RD._fileIndex.push({ url, name: f.name, filePath, isImage });
 
     let thumb = '';
     if (isImage) {
@@ -2749,7 +2755,7 @@ function rdRender() {
       thumb = `<div class="rd-thumb-html">FILE</div>`;
     }
 
-    html += `<div class="rd-card" onclick="rdOpen('${url}', '${f.name}', ${isImage})">
+    html += `<div class="rd-card" onclick="rdOpenByIndex(${fi})">
       ${thumb}
       <div class="rd-card-body">
         <div class="rd-card-name">${f.name}</div>
@@ -2882,6 +2888,12 @@ function rdCloseFullPage() {
 }
 
 // ── Viewer ────────────────────────────────────────────────
+function rdOpenByIndex(idx) {
+  const f = RD._fileIndex && RD._fileIndex[idx];
+  if (!f) return;
+  rdOpen(f.url, f.name, f.isImage);
+}
+
 async function rdOpen(url, name, isImage) {
   const viewer  = document.getElementById('rd-viewer');
   const iframe  = document.getElementById('rd-viewer-iframe');
@@ -2920,11 +2932,19 @@ async function rdOpen(url, name, isImage) {
       rdShowFullPage(html, name, url);
       return;
     }
-    // Desktop — document.write into iframe works fine
+    // Desktop — show iframe then write HTML into it
+    iframe.style.display = 'block';
+    img.style.display = 'none';
+    img.src = '';
     iframe.src = 'about:blank';
-    await new Promise(function(r) { setTimeout(r, 30); });
-    const doc = iframe.contentDocument || iframe.contentWindow.document;
-    doc.open(); doc.write(html); doc.close();
+    await new Promise(function(r) { setTimeout(r, 80); });
+    try {
+      const doc = iframe.contentDocument || iframe.contentWindow.document;
+      doc.open(); doc.write(html); doc.close();
+    } catch(e) {
+      // Last resort fallback
+      iframe.srcdoc = html;
+    }
     title.textContent = name;
   } catch(e) {
     iframe.src = url;
