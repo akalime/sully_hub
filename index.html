@@ -295,11 +295,44 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
 .rd-card-meta { font-size:8px; color:var(--txt3); letter-spacing:1px; }
 .rd-card-actions { position:absolute; top:4px; right:4px; display:none; gap:3px; }
 .rd-card:hover .rd-card-actions { display:flex; }
+@media (max-width: 768px) {
+  .rd-card-actions { display:flex !important; }
+}
 .rd-act-btn { background:var(--bg); border:1px solid var(--border2); color:var(--txt); font-size:8px; padding:2px 5px; cursor:pointer; border-radius:2px; font-family:var(--font-ui); }
 .rd-act-btn:hover { color:var(--red); border-color:var(--red); }
 .rd-empty { grid-column:1/-1; text-align:center; padding:60px 20px; color:var(--txt3); font-size:10px; letter-spacing:2px; }
 #rd-viewer { display:none; }
 #rd-viewer.open { display:flex; }
+@media (max-width: 768px) {
+  #rd-viewer.open {
+    display: flex !important;
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 5000 !important;
+    flex-direction: column !important;
+  }
+  #rd-viewer-iframe {
+    width: 100% !important;
+    height: 100% !important;
+    border: none !important;
+    flex: 1;
+  }
+  #rd-viewer-img {
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: contain !important;
+    flex: 1;
+  }
+  #rd-viewer > div:first-child {
+    flex-shrink: 0;
+    padding: 8px 12px;
+  }
+  #rd-viewer > div:last-child {
+    flex: 1;
+    overflow: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+}
 
 
 /* ── MOBILE / RESPONSIVE ── */
@@ -533,10 +566,16 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
     max-height: none !important;
   }
 
-  /* Brainstorm is canvas — keep it non-scrolling */
+  /* Brainstorm is canvas — keep it non-scrolling, override the scroll fix */
   #view-brainstorm.active {
     overflow: hidden !important;
     display: flex !important;
+    position: absolute !important;
+    inset: 0 !important;
+    padding-bottom: 0 !important;
+  }
+  #view-brainstorm.active canvas {
+    touch-action: none !important;
   }
 
   /* Sticky filter/toolbar bars */
@@ -778,7 +817,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
           <button class="bs-btn" onclick="bsClearCanvas()" style="color:var(--red)">CLEAR</button>
           <span style="font-size:9px;color:var(--txt3);margin-left:8px" id="bs-status">Click canvas to pan · Drag nodes to move · Right-click node for options</span>
         </div>
-        <canvas id="bs-canvas"></canvas>
+        <canvas id="bs-canvas" style="touch-action:none"></canvas>
       </div>
 
       <div id="view-renders" class="view" style="flex-direction:column;overflow:hidden">
@@ -1539,7 +1578,11 @@ const BS_COLORS = {
 };
 
 function bsInit() {
-  if (BS.inited) { bsResize(); return; }
+  if (BS.inited) {
+    // Re-measure every time we switch to brainstorm tab (layout may have changed)
+    requestAnimationFrame(() => requestAnimationFrame(() => bsResize()));
+    return;
+  }
   BS.inited = true;
   BS.canvas = document.getElementById('bs-canvas');
   BS.ctx = BS.canvas.getContext('2d');
@@ -2692,6 +2735,14 @@ async function rdDelete(filePath, name) {
 
 // ── Viewer ────────────────────────────────────────────────
 function rdOpen(url, name, isImage) {
+  const isMobile = window.innerWidth <= 768;
+
+  // On mobile, HTML files open in new tab (iframes blocked by browsers)
+  if (!isImage && isMobile) {
+    window.open(url, '_blank');
+    return;
+  }
+
   const viewer = document.getElementById('rd-viewer');
   const iframe  = document.getElementById('rd-viewer-iframe');
   const img     = document.getElementById('rd-viewer-img');
