@@ -2785,9 +2785,12 @@ async function rdHandleUpload(e) {
     const safeName = file.name.replace(/[^a-zA-Z0-9._\-]/g, '_');
     const uploadPath = RD_PREFIX + (RD.currentFolder ? RD.currentFolder + '/' : '') + safeName;
 
+    const mime = file.name.endsWith('.html') || file.name.endsWith('.htm')
+      ? 'text/html'
+      : file.type || 'application/octet-stream';
     const { error } = await supa.storage
       .from(RD_BUCKET)
-      .upload(uploadPath, file, { upsert: true });
+      .upload(uploadPath, file, { upsert: true, contentType: mime });
 
     if (error) {
       showToast('Upload failed: ' + file.name + ' — ' + error.message, 'error');
@@ -2844,9 +2847,17 @@ async function rdDelete(filePath, name) {
 function rdOpen(url, name, isImage) {
   const isMobile = window.innerWidth <= 768;
 
-  // On mobile, HTML files open in new tab (iframes blocked by browsers)
+  // On mobile, fetch HTML and open as blob URL so Chrome renders it
   if (!isImage && isMobile) {
-    window.open(url, '_blank');
+    fetch(url)
+      .then(function(r) { return r.text(); })
+      .then(function(html) {
+        const blob = new Blob([html], { type: 'text/html' });
+        const blobUrl = URL.createObjectURL(blob);
+        window.open(blobUrl, '_blank');
+        setTimeout(function() { URL.revokeObjectURL(blobUrl); }, 5000);
+      })
+      .catch(function() { window.open(url, '_blank'); });
     return;
   }
 
