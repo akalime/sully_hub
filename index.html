@@ -1582,7 +1582,6 @@ function bsShowNodeMenu(cx, cy, idx) {
     <button onclick="bsEditNode(${idx});bsCloseMenus()">✏ EDIT</button>
     <button onclick="bsDuplicateNode(${idx});bsCloseMenus()">⧉ DUPLICATE</button>
     <div class="menu-sep"></div>
-    <button onclick="bsCaptureThumb(${idx});bsCloseMenus()">📸 CAPTURE PREVIEW</button>
     <button onclick="bsAddImageToNode(${idx});bsCloseMenus()">🖼 ADD IMAGE</button>
     <button onclick="bsConnectFromMenu(${idx});bsCloseMenus()">⟷ CONNECT FROM HERE</button>
     <div class="menu-sep"></div>
@@ -1767,13 +1766,15 @@ async function bsPickHtml(idx) {
 
     BS.nodes[idx].htmlSrc  = publicUrl;
     BS.nodes[idx].htmlName = file.name;
-    BS.nodes[idx].htmlPath = path;   // stored so we can delete later
+    BS.nodes[idx].htmlPath = path;
     BS.nodes[idx].type     = 'html';
     BS.nodes[idx].h        = 90 + (BS.nodes[idx].notes ? 40 : 0) + 220;
 
     bsCloseMenus();
     bsDraw();
     bsScheduleSave();
+    // Auto-capture thumbnail immediately after upload
+    bsCaptureThumb(idx);
   };
   input.click();
 }
@@ -1786,44 +1787,60 @@ async function bsCaptureThumb(idx) {
   n._thumbLoading = true;
   bsDraw();
 
-  // Create hidden iframe to load the HTML
-  const iframe = document.createElement('iframe');
-  iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1280px;height:800px;border:none;';
-  iframe.sandbox = 'allow-scripts allow-same-origin';
-  document.body.appendChild(iframe);
+  try {
+    // Fetch HTML content first to avoid cross-origin iframe issues
+    const resp = await fetch(n.htmlSrc);
+    if (!resp.ok) throw new Error('Fetch failed: ' + resp.status);
+    const htmlText = await resp.text();
 
-  iframe.onload = async () => {
-    try {
-      await new Promise(r => setTimeout(r, 600)); // let page render
-      const iDoc = iframe.contentDocument || iframe.contentWindow.document;
-      const thumbCanvas = await html2canvas(iDoc.body, {
-        width: 1280, height: 800,
-        scale: 0.25,
-        backgroundColor: '#07090c',
-        logging: false,
-        allowTaint: true,
-        useCORS: true,
-      });
-      // Store as Image object
-      const img = new Image();
-      img.onload = () => {
-        n._thumb = img;
+    // Create blob URL — same-origin, no CORS issues
+    const blob = new Blob([htmlText], { type: 'text/html' });
+    const blobUrl = URL.createObjectURL(blob);
+
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1280px;height:800px;border:none;visibility:hidden;';
+    document.body.appendChild(iframe);
+
+    iframe.onload = async () => {
+      try {
+        await new Promise(r => setTimeout(r, 800)); // let page render fully
+        const iDoc = iframe.contentDocument || iframe.contentWindow.document;
+        const thumbCanvas = await html2canvas(iDoc.body, {
+          width: 1280, height: 800,
+          scale: 0.25,
+          backgroundColor: '#07090c',
+          logging: false,
+          allowTaint: true,
+          useCORS: false,
+        });
+        const img = new Image();
+        img.onload = () => {
+          n._thumb = img;
+          n._thumbLoading = false;
+          n._thumbData = thumbCanvas.toDataURL('image/jpeg', 0.75);
+          bsDraw();
+          bsScheduleSave();
+          showToast('Preview captured', 'success');
+        };
+        img.src = thumbCanvas.toDataURL('image/jpeg', 0.75);
+      } catch(e) {
+        console.error('[bs] html2canvas failed:', e);
         n._thumbLoading = false;
-        n._thumbData = thumbCanvas.toDataURL('image/jpeg', 0.7);
+        showToast('Capture failed: ' + e.message, 'error');
         bsDraw();
-        bsScheduleSave();
-      };
-      img.src = thumbCanvas.toDataURL('image/jpeg', 0.7);
-    } catch(e) {
-      console.error('[bs] capture failed:', e);
-      n._thumbLoading = false;
-      showToast('Capture failed: ' + e.message, 'error');
-      bsDraw();
-    }
-    iframe.remove();
-  };
+      }
+      iframe.remove();
+      URL.revokeObjectURL(blobUrl);
+    };
 
-  iframe.src = n.htmlSrc;
+    iframe.src = blobUrl;
+
+  } catch(e) {
+    console.error('[bs] capture failed:', e);
+    n._thumbLoading = false;
+    showToast('Capture failed: ' + e.message, 'error');
+    bsDraw();
+  }
 }
 
 async function bsClearHtml(idx) {
