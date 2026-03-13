@@ -2843,6 +2843,44 @@ async function rdDelete(filePath, name) {
   rdLoad();
 }
 
+
+// ── Full page render takeover (mobile) ───────────────────
+function rdShowFullPage(html, name, url) {
+  var overlay = document.getElementById('rd-fullpage');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'rd-fullpage';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:6000;background:#07090c;display:flex;flex-direction:column;';
+    overlay.innerHTML = '<div id="rd-fp-bar" style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0;z-index:1">'
+      + '<button onclick="rdCloseFullPage()" style="background:none;border:1px solid var(--border2);color:var(--txt);font-family:var(--font-ui);font-size:9px;padding:5px 12px;cursor:pointer;border-radius:2px;letter-spacing:1px">✕ CLOSE</button>'
+      + '<div id="rd-fp-title" style="font-family:var(--font-ui);font-size:10px;color:var(--txt);letter-spacing:1px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>'
+      + '<a id="rd-fp-link" href="#" target="_blank" style="font-family:var(--font-ui);font-size:9px;color:var(--accent);letter-spacing:1px;text-decoration:none;flex-shrink:0">↗ NEW TAB</a>'
+      + '</div>'
+      + '<div id="rd-fp-content" style="flex:1;overflow:auto;-webkit-overflow-scrolling:touch;"></div>';
+    document.body.appendChild(overlay);
+  }
+  document.getElementById('rd-fp-title').textContent = name;
+  document.getElementById('rd-fp-link').href = url;
+  // Inject HTML directly into the div — renders inline, no iframe needed
+  document.getElementById('rd-fp-content').innerHTML = html;
+  overlay.style.display = 'flex';
+  // Run any scripts in the injected HTML
+  var scripts = overlay.querySelectorAll('#rd-fp-content script');
+  scripts.forEach(function(s) {
+    var ns = document.createElement('script');
+    if (s.src) { ns.src = s.src; } else { ns.textContent = s.textContent; }
+    document.head.appendChild(ns);
+  });
+}
+
+function rdCloseFullPage() {
+  var overlay = document.getElementById('rd-fullpage');
+  if (overlay) {
+    overlay.style.display = 'none';
+    document.getElementById('rd-fp-content').innerHTML = '';
+  }
+}
+
 // ── Viewer ────────────────────────────────────────────────
 async function rdOpen(url, name, isImage) {
   const viewer  = document.getElementById('rd-viewer');
@@ -2875,10 +2913,18 @@ async function rdOpen(url, name, isImage) {
   try {
     const resp = await fetch(url);
     const html = await resp.text();
-    // Encode as base64 data URI — Chrome Android renders this reliably
-    const b64 = btoa(unescape(encodeURIComponent(html)));
-    const dataUrl = 'data:text/html;base64,' + b64;
-    iframe.src = dataUrl;
+    const isMobile = window.innerWidth <= 768;
+    if (isMobile) {
+      // Mobile Chrome blocks iframes/data URIs — use full page takeover instead
+      viewer.classList.remove('open');
+      rdShowFullPage(html, name, url);
+      return;
+    }
+    // Desktop — document.write into iframe works fine
+    iframe.src = 'about:blank';
+    await new Promise(function(r) { setTimeout(r, 30); });
+    const doc = iframe.contentDocument || iframe.contentWindow.document;
+    doc.open(); doc.write(html); doc.close();
     title.textContent = name;
   } catch(e) {
     iframe.src = url;
