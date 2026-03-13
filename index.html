@@ -695,6 +695,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
     </div>
 
     <div style="padding:12px 14px;border-top:1px solid var(--border)">
+      <div id="role-badge" style="font-size:9px;color:var(--txt3);margin-bottom:4px;letter-spacing:1px">⬤ VIEWER</div>
       <div style="font-size:9px;color:var(--txt3);margin-bottom:4px">v1.0.4 · March 2026</div>
       <div style="display:flex;gap:4px">
         <div style="flex:1;height:3px;background:var(--green);border-radius:2px" title="Working"></div>
@@ -711,8 +712,8 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
       <div class="tb-title" id="tb-title">Dashboard</div>
       <div class="tb-spacer"></div>
       <input id="search-box" placeholder="Search everything..." oninput="globalSearch(this.value)">
-      <button class="tb-btn" onclick="exportSession()" style="border-color:var(--purple);color:var(--purple)">⬇ EXPORT</button>
-      <button class="tb-btn" onclick="openAddModal()">+ ADD ITEM</button>
+      <button class="tb-btn admin-only" onclick="exportSession()" style="border-color:var(--purple);color:var(--purple)">⬇ EXPORT</button>
+      <button class="tb-btn admin-only" onclick="openAddModal()">+ ADD ITEM</button>
     </div>
 
     <div id="content">
@@ -776,7 +777,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
           <button class="filter-btn" onclick="filterBugs('open',this)">OPEN</button>
           <button class="filter-btn" onclick="filterBugs('fixed',this)">FIXED</button>
           <div class="filter-spacer"></div>
-          <button class="tb-btn" onclick="openAddBug()">+ ADD BUG</button>
+          <button class="tb-btn admin-only" onclick="openAddBug()">+ ADD BUG</button>
         </div>
         <div id="bugs-body"></div>
       </div>
@@ -804,7 +805,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
           <button class="filter-btn" onclick="filterTasks('done',this)">DONE</button>
           <div class="filter-spacer"></div>
           <span class="filter-count" id="task-count"></span>
-          <button class="tb-btn" onclick="openAddTask()">+ ADD TASK</button>
+          <button class="tb-btn admin-only" onclick="openAddTask()">+ ADD TASK</button>
         </div>
         <div id="roadmap-body"></div>
       </div>
@@ -826,12 +827,12 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
 
       <div id="view-brainstorm" class="view" style="position:relative;overflow:hidden;padding:0">
         <div id="bs-toolbar" style="position:absolute;top:12px;left:12px;z-index:100;display:flex;gap:6px;align-items:center">
-          <button class="bs-btn" onclick="bsAddNode()">+ NODE</button>
-          <button class="bs-btn" onclick="bsAddGroup()">+ GROUP</button>
-          <button class="bs-btn bs-btn-purple" onclick="bsToggleConnect()" id="bs-connect-btn">⟷ CONNECT</button>
-          <button class="bs-btn" onclick="bsClearCanvas()" style="color:var(--red)">CLEAR</button>
-          <button class="bs-btn" style="border-color:var(--purple);color:var(--purple)" onclick="bsOpenImport()">+ FROM CLAUDE</button>
-          <button class="bs-btn" style="border-color:var(--txt2);color:var(--txt2)" onclick="bsOpenPrompt()">⊡ PROMPT</button>
+          <button class="bs-btn admin-only" onclick="bsAddNode()">+ NODE</button>
+          <button class="bs-btn admin-only" onclick="bsAddGroup()">+ GROUP</button>
+          <button class="bs-btn bs-btn-purple admin-only" onclick="bsToggleConnect()" id="bs-connect-btn">⟷ CONNECT</button>
+          <button class="bs-btn admin-only" onclick="bsClearCanvas()" style="color:var(--red)">CLEAR</button>
+          <button class="bs-btn admin-only" style="border-color:var(--purple);color:var(--purple)" onclick="bsOpenImport()">+ FROM CLAUDE</button>
+          <button class="bs-btn admin-only" style="border-color:var(--txt2);color:var(--txt2)" onclick="bsOpenPrompt()">⊡ PROMPT</button>
           <span style="font-size:9px;color:var(--txt3);margin-left:8px" id="bs-status">Click canvas to pan · Drag nodes to move · Right-click node for options</span>
         </div>
         <canvas id="bs-canvas" style="touch-action:none"></canvas>
@@ -839,9 +840,9 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
 
       <div id="view-renders" class="view" style="flex-direction:column;overflow:hidden">
         <div id="rd-toolbar" style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center;flex-shrink:0">
-          <button class="bs-btn" onclick="rdNewFolder()">+ FOLDER</button>
-          <button class="bs-btn" onclick="rdUpload()" id="rd-upload-btn">↑ UPLOAD</button>
-          <input type="file" id="rd-file-input" multiple accept=".html,image/*" style="display:none" onchange="rdHandleUpload(event)">
+          <button class="bs-btn admin-only" onclick="rdNewFolder()">+ FOLDER</button>
+          <button class="bs-btn admin-only" onclick="rdUpload()" id="rd-upload-btn">↑ UPLOAD</button>
+          <input type="file" id="rd-file-input" multiple accept="*/*" style="display:none" onchange="rdHandleUpload(event)">
           <div id="rd-breadcrumb" style="flex:1;font-size:10px;color:var(--txt3);letter-spacing:1px"></div>
           <div id="rd-status" style="font-size:9px;color:var(--txt3)"></div>
         </div>
@@ -928,6 +929,9 @@ let FEATURES_RAW = []; // flat rows from DB
 let TASKS = [];
 // FEATURES stays as grouped array for render — rebuilt from FEATURES_RAW
 let FEATURES = [];
+
+let USER_ROLE = 'viewer'; // 'admin' or 'viewer' — set after login
+function isAdmin() { return USER_ROLE === 'admin'; }
 
 let bugFilter = 'all';
 let featFilter = 'all';
@@ -1086,11 +1090,11 @@ function renderBugs() {
         <div class="bc-desc">${b.desc}</div>
         <div class="bc-fix-label">FIX →</div>
         <div class="bc-desc" style="color:var(--txt)">${b.fix}</div>
-        <div class="bc-actions">
+        ${isAdmin() ? `<div class="bc-actions">
           ${b.status === 'open' ? `<button class="bc-btn" style="background:var(--green2);color:var(--green)" onclick="markFixed(event,${b.id})">MARK FIXED</button>` : `<button class="bc-btn" style="background:var(--amber2);color:var(--amber)" onclick="markOpen(event,${b.id})">REOPEN</button>`}
           <button class="bc-btn" style="background:var(--blue2);color:var(--blue)" onclick="editBug(event,${b.id})">EDIT</button>
           <button class="bc-btn" style="background:var(--red2);color:var(--red)" onclick="deleteBug(event,${b.id})">DELETE</button>
-        </div>
+        </div>` : ''}
       </div>
     </div>`).join('');
   document.getElementById('sb-bug-count').textContent = BUGS.filter(b=>b.status==='open').length;
@@ -1112,6 +1116,7 @@ function filterBugs(f, btn) {
 
 async function markFixed(e, id) {
   e.stopPropagation();
+  if (!isAdmin()) return;
   const b = BUGS.find(b => b.id === id);
   if (!b) return;
   b.status = 'fixed';
@@ -1120,6 +1125,7 @@ async function markFixed(e, id) {
 }
 async function markOpen(e, id) {
   e.stopPropagation();
+  if (!isAdmin()) return;
   const b = BUGS.find(b => b.id === id);
   if (!b) return;
   b.status = 'open';
@@ -1129,6 +1135,7 @@ async function markOpen(e, id) {
 
 async function deleteBug(e, id) {
   e.stopPropagation();
+  if (!isAdmin()) return;
   if(!confirm('Delete bug #'+id+'?')) return;
   const ok = await dbDeleteBug(id);
   if (ok) {
@@ -1139,6 +1146,7 @@ async function deleteBug(e, id) {
 
 function editBug(e, id) {
   e.stopPropagation();
+  if (!isAdmin()) return;
   const b = BUGS.find(x => x.id === id);
   openModal('Edit Bug', [
     {label:'Title', key:'title', type:'input', val:b.title},
@@ -1206,12 +1214,12 @@ function renderFeatures() {
               <div class="fi-name">${f.name}</div>
               ${f.note ? `<div class="fi-note">${f.note}</div>` : ''}
             </div>
-            <div class="fi-actions">
+            ${isAdmin() ? `<div class="fi-actions">
               <select class="fi-btn" style="width:80px" onchange="changeFeatureStatus(${gi},${fi},this.value)">
                 ${['working','broken','partial','planned','retired'].map(s=>`<option value="${s}" ${f.status===s?'selected':''}>${labelMap[s]}</option>`).join('')}
               </select>
               <button class="fi-btn" onclick="editFeature(${gi},${fi})">EDIT</button>
-            </div>
+            </div>` : ''}
           </div>`).join('')}
       </div>
     </div>`;
@@ -1228,6 +1236,7 @@ function toggleGroup(gi) {
 }
 
 async function changeFeatureStatus(gi, fi, status) {
+  if (!isAdmin()) return;
   const f = FEATURES[gi].items[fi];
   f.status = status;
   renderFeatures(); renderDashboard();
@@ -1235,6 +1244,7 @@ async function changeFeatureStatus(gi, fi, status) {
 }
 
 function editFeature(gi, fi) {
+  if (!isAdmin()) return;
   const f = FEATURES[gi].items[fi];
   openModal('Edit Feature', [
     {label:'Name', key:'name', type:'input', val:f.name},
@@ -1287,10 +1297,10 @@ function renderRoadmap() {
             <div class="task-file">${t.file}</div>
             <div class="task-desc">${t.desc}</div>
           </div>
-          <div style="display:flex;gap:4px;flex-shrink:0" onclick="event.stopPropagation()">
+          ${isAdmin() ? `<div style="display:flex;gap:4px;flex-shrink:0" onclick="event.stopPropagation()">
             <button class="fi-btn" onclick="editTask(${t.id})">EDIT</button>
             <button class="fi-btn" style="color:var(--red)" onclick="deleteTask(${t.id})">DEL</button>
-          </div>
+          </div>` : ''}
         </div>`).join('')}
     </div>`;
   });
@@ -1303,6 +1313,7 @@ function renderRoadmap() {
 }
 
 async function toggleTask(id) {
+  if (!isAdmin()) return;
   const t = TASKS.find(x => x.id === id);
   t.done = !t.done;
   renderRoadmap(); renderDashboard();
@@ -1310,6 +1321,7 @@ async function toggleTask(id) {
 }
 
 async function deleteTask(id) {
+  if (!isAdmin()) return;
   if(!confirm('Delete task?')) return;
   const ok = await dbDeleteTask(id);
   if (ok) {
@@ -1319,6 +1331,7 @@ async function deleteTask(id) {
 }
 
 function editTask(id) {
+  if (!isAdmin()) return;
   const t = TASKS.find(x => x.id === id);
   openModal('Edit Task', [
     {label:'Title', key:'title', type:'input', val:t.title},
@@ -2125,6 +2138,16 @@ function bsHitNode(worldX, worldY) {
 
 function bsOnMouseDown(e) {
   if (e.button === 2) return;
+  // Viewers can pan and zoom but not edit nodes
+  if (!isAdmin() && e.button !== 2) {
+    // Allow panning only
+    const wp = bsWorldPos(e);
+    BS.panning = true;
+    BS.panStart = {x: e.clientX, y: e.clientY};
+    BS.panOrigin = {x: BS.pan.x, y: BS.pan.y};
+    BS.canvas.classList.add('grabbing');
+    return;
+  }
   bsCloseMenus();
   const wp = bsWorldPos(e);
   const hit = bsHitNode(wp.x, wp.y);
@@ -2198,6 +2221,7 @@ function bsOnWheel(e) {
 
 function bsOnRightClick(e) {
   e.preventDefault();
+  if (!isAdmin()) return;
   bsCloseMenus();
   const wp = bsWorldPos(e);
   const hit = bsHitNode(wp.x, wp.y);
@@ -2206,6 +2230,7 @@ function bsOnRightClick(e) {
 }
 
 function bsOnDblClick(e) {
+  if (!isAdmin()) return;
   const wp = bsWorldPos(e);
   const hit = bsHitNode(wp.x, wp.y);
   if (hit >= 0) bsEditNode(hit);
@@ -2726,7 +2751,7 @@ function rdRender() {
         <div class="rd-card-meta">FOLDER</div>
       </div>
       <div class="rd-card-actions">
-        <button class="rd-act-btn" onclick="event.stopPropagation();rdDeleteFolder('${folderPath}')">✕</button>
+        ${isAdmin() ? `<button class="rd-act-btn" onclick="event.stopPropagation();rdDeleteFolder('${folderPath}')">✕</button>` : ''}
       </div>
     </div>`;
   });
@@ -2739,30 +2764,43 @@ function rdRender() {
     const filePath = RD_PREFIX + (RD.currentFolder ? RD.currentFolder + '/' : '') + f.name;
     const { data: urlData } = supa.storage.from(RD_BUCKET).getPublicUrl(filePath);
     const url = urlData.publicUrl;
-    const isHtml  = f.name.endsWith('.html') || f.name.endsWith('.htm');
-    const isImage = /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(f.name);
+    const ftype   = rdFileType(f.name);
     const sizeKb  = f.metadata?.size ? Math.round(f.metadata.size / 1024) + 'kb' : '';
 
-    // Store file info for safe retrieval by index
-    RD._fileIndex.push({ url, name: f.name, filePath, isImage });
+    RD._fileIndex.push({ url, name: f.name, filePath, ftype });
+
+    const icons = {
+      image:'🖼', html:'⬡', video:'▶', audio:'♪', pdf:'📄',
+      code:'{ }', doc:'📝', zip:'🗜', other:'📎'
+    };
+    const colors = {
+      image:'var(--accent)', html:'var(--green)', video:'var(--purple)',
+      audio:'var(--amber)', pdf:'var(--red)', code:'var(--blue)',
+      doc:'var(--txt2)', zip:'var(--amber)', other:'var(--txt3)'
+    };
 
     let thumb = '';
-    if (isImage) {
-      thumb = `<img class="rd-thumb" src="${url}" loading="lazy" onerror="this.style.display='none'">`;
-    } else if (isHtml) {
-      thumb = `<div class="rd-thumb-html">⬡ HTML</div>`;
+    if (ftype === 'image') {
+      thumb = `<img class="rd-thumb" src="${url}" loading="lazy" onerror="this.style.background='var(--panel2)'">`;
+    } else if (ftype === 'video') {
+      thumb = `<video class="rd-thumb" src="${url}" muted preload="metadata" style="object-fit:cover"></video>`;
     } else {
-      thumb = `<div class="rd-thumb-html">FILE</div>`;
+      const icon = icons[ftype] || '📎';
+      const col  = colors[ftype] || 'var(--txt3)';
+      thumb = `<div class="rd-thumb-html" style="font-size:28px;color:${col};flex-direction:column;gap:6px">
+        <span>${icon}</span>
+        <span style="font-size:8px;letter-spacing:1px;color:${col}">${ftype.toUpperCase()}</span>
+      </div>`;
     }
 
     html += `<div class="rd-card" onclick="rdOpenByIndex(${fi})">
       ${thumb}
       <div class="rd-card-body">
         <div class="rd-card-name">${f.name}</div>
-        <div class="rd-card-meta">${isHtml ? 'HTML' : isImage ? 'IMAGE' : 'FILE'}${sizeKb ? ' · ' + sizeKb : ''}</div>
+        <div class="rd-card-meta">${ftype.toUpperCase()}${sizeKb ? ' · ' + sizeKb : ''}</div>
       </div>
       <div class="rd-card-actions">
-        <button class="rd-act-btn" onclick="event.stopPropagation();rdDelete('${filePath}', '${f.name}')">✕</button>
+        ${isAdmin() ? `<button class="rd-act-btn" onclick="event.stopPropagation();rdDelete('${filePath}', '${f.name}')">✕</button>` : ''}
       </div>
     </div>`;
   });
@@ -2791,9 +2829,7 @@ async function rdHandleUpload(e) {
     const safeName = file.name.replace(/[^a-zA-Z0-9._\-]/g, '_');
     const uploadPath = RD_PREFIX + (RD.currentFolder ? RD.currentFolder + '/' : '') + safeName;
 
-    const mime = file.name.endsWith('.html') || file.name.endsWith('.htm')
-      ? 'text/html'
-      : file.type || 'application/octet-stream';
+    const mime = file.type || rdGuessMime(file.name);
     const { error } = await supa.storage
       .from(RD_BUCKET)
       .upload(uploadPath, file, { upsert: true, contentType: mime });
@@ -2888,68 +2924,157 @@ function rdCloseFullPage() {
 }
 
 // ── Viewer ────────────────────────────────────────────────
+
+// ── File type detection ───────────────────────────────────
+function rdFileType(name) {
+  const ext = name.split('.').pop().toLowerCase();
+  if (/^(png|jpg|jpeg|gif|webp|svg|bmp|ico|tiff|avif)$/.test(ext)) return 'image';
+  if (/^(mp4|webm|mov|avi|mkv|m4v|ogv)$/.test(ext))                return 'video';
+  if (/^(mp3|wav|ogg|flac|aac|m4a|opus)$/.test(ext))               return 'audio';
+  if (/^(html|htm)$/.test(ext))                                      return 'html';
+  if (/^(pdf)$/.test(ext))                                           return 'pdf';
+  if (/^(js|ts|py|css|json|xml|yaml|yml|sh|md|txt|csv|sql)$/.test(ext)) return 'code';
+  if (/^(doc|docx|xls|xlsx|ppt|pptx|odt|ods|odp|pages|numbers|key)$/.test(ext)) return 'doc';
+  if (/^(zip|tar|gz|rar|7z)$/.test(ext))                            return 'zip';
+  return 'other';
+}
+
+function rdGuessMime(name) {
+  const t = rdFileType(name);
+  const map = {
+    html:'text/html', pdf:'application/pdf',
+    video:'video/mp4', audio:'audio/mpeg',
+    code:'text/plain', doc:'application/octet-stream',
+    zip:'application/zip', other:'application/octet-stream'
+  };
+  return map[t] || 'application/octet-stream';
+}
+
 function rdOpenByIndex(idx) {
   const f = RD._fileIndex && RD._fileIndex[idx];
   if (!f) return;
-  rdOpen(f.url, f.name, f.isImage);
+  rdOpen(f.url, f.name, f.ftype);
 }
 
-async function rdOpen(url, name, isImage) {
+async function rdOpen(url, name, ftype) {
   const viewer  = document.getElementById('rd-viewer');
   const iframe  = document.getElementById('rd-viewer-iframe');
   const img     = document.getElementById('rd-viewer-img');
   const title   = document.getElementById('rd-viewer-title');
   const openBtn = document.getElementById('rd-viewer-open');
+  const isMobile = window.innerWidth <= 768;
 
   title.textContent = name;
   openBtn.href = url;
-  viewer.classList.add('open');
 
-  if (isImage) {
+  // Reset
+  iframe.style.display = 'none';
+  img.style.display = 'none';
+  iframe.removeAttribute('srcdoc');
+  iframe.src = '';
+  img.src = '';
+
+  // ── Image ──
+  if (ftype === 'image') {
+    viewer.classList.add('open');
     img.src = url;
     img.style.display = 'block';
-    iframe.style.display = 'none';
-    iframe.removeAttribute('srcdoc');
-    iframe.src = '';
     return;
   }
 
-  // HTML — fetch content and inject via srcdoc so it renders on all browsers/mobile
-  iframe.style.display = 'block';
-  img.style.display = 'none';
-  img.src = '';
-  iframe.removeAttribute('srcdoc');
-  iframe.src = '';
-  title.textContent = name + ' — loading...';
-
-  try {
-    const resp = await fetch(url);
-    const html = await resp.text();
-    const isMobile = window.innerWidth <= 768;
-    if (isMobile) {
-      // Mobile Chrome blocks iframes/data URIs — use full page takeover instead
-      viewer.classList.remove('open');
-      rdShowFullPage(html, name, url);
-      return;
-    }
-    // Desktop — show iframe then write HTML into it
+  // ── Video ──
+  if (ftype === 'video') {
+    viewer.classList.add('open');
     iframe.style.display = 'block';
-    img.style.display = 'none';
-    img.src = '';
-    iframe.src = 'about:blank';
-    await new Promise(function(r) { setTimeout(r, 80); });
-    try {
-      const doc = iframe.contentDocument || iframe.contentWindow.document;
-      doc.open(); doc.write(html); doc.close();
-    } catch(e) {
-      // Last resort fallback
-      iframe.srcdoc = html;
-    }
-    title.textContent = name;
-  } catch(e) {
     iframe.src = url;
-    title.textContent = name;
+    return;
   }
+
+  // ── Audio ──
+  if (ftype === 'audio') {
+    viewer.classList.add('open');
+    const audioHtml = '<html><body style="background:#07090c;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">'
+      + '<audio controls autoplay style="width:90%;max-width:500px" src="' + url + '"></audio></body></html>';
+    iframe.style.display = 'block';
+    if (!isMobile) {
+      iframe.src = 'about:blank';
+      await new Promise(function(r){ setTimeout(r,50); });
+      const doc = iframe.contentDocument || iframe.contentWindow.document;
+      doc.open(); doc.write(audioHtml); doc.close();
+    } else {
+      rdShowFullPage(audioHtml, name, url);
+    }
+    return;
+  }
+
+  // ── PDF ──
+  if (ftype === 'pdf') {
+    viewer.classList.add('open');
+    iframe.style.display = 'block';
+    iframe.src = url;
+    return;
+  }
+
+  // ── HTML ──
+  if (ftype === 'html') {
+    title.textContent = name + ' — loading...';
+    try {
+      const resp = await fetch(url);
+      const html = await resp.text();
+      title.textContent = name;
+      if (isMobile) {
+        rdShowFullPage(html, name, url);
+      } else {
+        viewer.classList.add('open');
+        iframe.style.display = 'block';
+        iframe.src = 'about:blank';
+        await new Promise(function(r){ setTimeout(r,80); });
+        const doc = iframe.contentDocument || iframe.contentWindow.document;
+        doc.open(); doc.write(html); doc.close();
+      }
+    } catch(e) {
+      viewer.classList.add('open');
+      iframe.style.display = 'block';
+      iframe.src = url;
+    }
+    return;
+  }
+
+  // ── Code / Text ──
+  if (ftype === 'code') {
+    title.textContent = name + ' — loading...';
+    try {
+      const resp = await fetch(url);
+      const text = await resp.text();
+      title.textContent = name;
+      const codeHtml = '<html><body style="background:#07090c;color:#b8ccd8;font-family:monospace;font-size:12px;padding:20px;margin:0;white-space:pre-wrap;word-break:break-all">'
+        + text.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</body></html>';
+      if (isMobile) {
+        rdShowFullPage(codeHtml, name, url);
+      } else {
+        viewer.classList.add('open');
+        iframe.style.display = 'block';
+        iframe.src = 'about:blank';
+        await new Promise(function(r){ setTimeout(r,80); });
+        const doc = iframe.contentDocument || iframe.contentWindow.document;
+        doc.open(); doc.write(codeHtml); doc.close();
+      }
+    } catch(e) {
+      rdDownload(url, name);
+    }
+    return;
+  }
+
+  // ── Everything else — download ──
+  rdDownload(url, name);
+}
+
+function rdDownload(url, name) {
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.target = '_blank';
+  a.click();
 }
 
 function rdCloseViewer() {
@@ -3324,6 +3449,33 @@ async function dbUpdateFeature(id, changes) {
   return true;
 }
 
+// ── Role management ──────────────────────────────────────
+async function fetchUserRole(uid) {
+  const { data, error } = await supa.from('profiles').select('role').eq('id', uid).maybeSingle();
+  if (data && data.role) {
+    USER_ROLE = data.role;
+  } else {
+    USER_ROLE = 'viewer';
+  }
+  applyRoleUI();
+}
+
+function applyRoleUI() {
+  // Show/hide admin-only elements
+  document.querySelectorAll('.admin-only').forEach(function(el) {
+    el.style.display = isAdmin() ? '' : 'none';
+  });
+  document.querySelectorAll('.viewer-only').forEach(function(el) {
+    el.style.display = isAdmin() ? 'none' : '';
+  });
+  // Update sidebar role badge
+  const badge = document.getElementById('role-badge');
+  if (badge) {
+    badge.textContent = isAdmin() ? '⬤ ADMIN' : '⬤ VIEWER';
+    badge.style.color = isAdmin() ? 'var(--green)' : 'var(--txt3)';
+  }
+}
+
 // ══════════════════════════════════════════════════════════
 // INIT — called after login
 // ══════════════════════════════════════════════════════════
@@ -3414,8 +3566,8 @@ function unlockApp(user) {
   signOutBtn.style.cssText = 'background:none;border:1px solid var(--border);color:var(--txt3);font-family:var(--font-ui);font-size:8px;padding:3px 8px;cursor:pointer;border-radius:2px;letter-spacing:1px;margin-top:4px;width:100%';
   signOutBtn.onclick = signOut;
   footer.appendChild(signOutBtn);
-  // Load all data from Supabase
-  loadAllData();
+  // Fetch role then load data
+  fetchUserRole(user.id).then(function() { loadAllData(); });
 }
 
 async function signOut() {
