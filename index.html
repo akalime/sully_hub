@@ -258,6 +258,29 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
 #dr-body blockquote{border-left:3px solid var(--accent);padding:6px 12px;background:var(--accent2);margin-bottom:8px;font-style:italic;color:var(--txt2)}
 #dr-body a{color:var(--accent);text-decoration:none}
 #dr-body hr{border:none;border-bottom:1px solid var(--border);margin:16px 0}
+
+/* ── BRAINSTORM ── */
+#view-brainstorm { background: var(--bg); }
+#bs-canvas { display:block; width:100%; height:100%; cursor:grab; }
+#bs-canvas.grabbing { cursor:grabbing; }
+#bs-canvas.connecting { cursor:crosshair; }
+.bs-btn { background:var(--panel2); border:1px solid var(--border2); color:var(--txt); font-family:var(--font-ui); font-size:9px; padding:5px 10px; cursor:pointer; border-radius:2px; letter-spacing:1px; transition:all .1s; }
+.bs-btn:hover { border-color:var(--accent3); color:var(--white); }
+.bs-btn-purple { border-color:var(--purple); color:var(--purple); }
+.bs-btn-purple.active { background:var(--purple); color:var(--bg); }
+#bs-node-menu { position:fixed; z-index:9000; background:var(--panel); border:1px solid var(--border2); border-radius:4px; padding:4px 0; min-width:160px; box-shadow:0 8px 32px #000a; }
+#bs-node-menu button { display:block; width:100%; text-align:left; padding:7px 14px; background:none; border:none; color:var(--txt); font-family:var(--font-ui); font-size:10px; cursor:pointer; letter-spacing:1px; }
+#bs-node-menu button:hover { background:var(--accent2); color:var(--white); }
+#bs-node-menu .menu-sep { height:1px; background:var(--border); margin:3px 0; }
+#bs-node-editor { position:fixed; z-index:9001; background:var(--panel); border:1px solid var(--border2); border-radius:4px; padding:18px; width:340px; box-shadow:0 8px 32px #000a; }
+#bs-node-editor h4 { font-family:var(--font-display); font-size:12px; color:var(--accent); margin-bottom:12px; letter-spacing:2px; }
+#bs-node-editor label { font-size:9px; color:var(--txt3); letter-spacing:1px; display:block; margin-bottom:3px; margin-top:8px; }
+#bs-node-editor input, #bs-node-editor textarea, #bs-node-editor select { width:100%; background:var(--panel2); border:1px solid var(--border2); color:var(--white); font-family:var(--font-ui); font-size:10px; padding:6px 8px; border-radius:2px; outline:none; }
+#bs-node-editor textarea { min-height:60px; resize:vertical; }
+#bs-node-editor .ed-row { display:flex; gap:6px; margin-top:12px; }
+#bs-node-editor .ed-btn { flex:1; padding:7px; background:var(--accent); border:none; color:var(--bg); font-family:var(--font-ui); font-size:9px; font-weight:700; cursor:pointer; border-radius:2px; letter-spacing:1px; }
+#bs-node-editor .ed-btn.cancel { background:var(--panel2); border:1px solid var(--border2); color:var(--txt); }
+
 </style>
 </head>
 <body>
@@ -337,6 +360,10 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
       <div class="sb-item" onclick="nav('cleanup')">
         <div class="sb-dot" style="background:var(--red)"></div>
         <span class="sb-label">Cleanup List</span>
+      </div>
+      <div class="sb-item" onclick="nav('brainstorm')">
+        <div class="sb-dot" style="background:var(--purple)"></div>
+        <span class="sb-label">Brainstorm</span>
       </div>
     </div>
 
@@ -469,6 +496,17 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
         <div id="cleanup-body" style="flex:1;overflow:auto;padding:14px 16px"></div>
       </div>
 
+      <div id="view-brainstorm" class="view" style="position:relative;overflow:hidden;padding:0">
+        <div id="bs-toolbar" style="position:absolute;top:12px;left:12px;z-index:100;display:flex;gap:6px;align-items:center">
+          <button class="bs-btn" onclick="bsAddNode()">+ NODE</button>
+          <button class="bs-btn" onclick="bsAddGroup()">+ GROUP</button>
+          <button class="bs-btn bs-btn-purple" onclick="bsToggleConnect()" id="bs-connect-btn">⟷ CONNECT</button>
+          <button class="bs-btn" onclick="bsClearCanvas()" style="color:var(--red)">CLEAR</button>
+          <span style="font-size:9px;color:var(--txt3);margin-left:8px" id="bs-status">Click canvas to pan · Drag nodes to move · Right-click node for options</span>
+        </div>
+        <canvas id="bs-canvas"></canvas>
+      </div>
+
     </div>
   </div>
 </div>
@@ -550,7 +588,7 @@ function nav(view) {
   document.querySelectorAll('.sb-item').forEach(i => i.classList.remove('active'));
   document.getElementById('view-' + view).classList.add('active');
   document.querySelector(`[onclick="nav('${view}')"]`).classList.add('active');
-  const titles = {dashboard:'Dashboard',docs:'All Documents',bugs:'Known Bugs',features:'Feature Status',roadmap:'Roadmap',changelog:'Changelog',decisions:'Decisions',cleanup:'Cleanup List'};
+  const titles = {dashboard:'Dashboard',docs:'All Documents',bugs:'Known Bugs',features:'Feature Status',roadmap:'Roadmap',changelog:'Changelog',decisions:'Decisions',cleanup:'Cleanup List',brainstorm:'Brainstorm'};
   document.getElementById('tb-title').textContent = titles[view] || view;
   if(view === 'bugs') renderBugs();
   if(view === 'features') renderFeatures();
@@ -558,6 +596,7 @@ function nav(view) {
   if(view === 'changelog') renderChangelog();
   if(view === 'decisions') renderDecisions();
   if(view === 'cleanup') renderCleanup();
+  if(view === 'brainstorm') bsInit();
   if(view === 'docs') renderDocs();
   if(view === 'dashboard') renderDashboard();
 }
@@ -1168,6 +1207,560 @@ function toast(msg) {
   clearTimeout(_toastTimer);
   _toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
 }
+
+
+// ══════════════════════════════════════════════════════════
+// BRAINSTORM CANVAS ENGINE
+// ══════════════════════════════════════════════════════════
+
+const BS = {
+  canvas: null, ctx: null,
+  nodes: [], edges: [],
+  pan: {x:0, y:0}, scale: 1,
+  dragging: null, dragOffX: 0, dragOffY: 0,
+  panning: false, panStart: {x:0, y:0}, panOrigin: {x:0, y:0},
+  connecting: false, connectFrom: null,
+  dirty: false, saveTimer: null,
+  inited: false,
+  W: 0, H: 0,
+};
+
+const BS_COLORS = {
+  idea:    { bg:'#1a0a2e', border:'#a855f7', label:'#a855f7' },
+  feature: { bg:'#001a0a', border:'#00e87a', label:'#00e87a' },
+  bug:     { bg:'#1a0000', border:'#ff3548', label:'#ff3548' },
+  ui:      { bg:'#00101a', border:'#00c8f0', label:'#00c8f0' },
+  note:    { bg:'#0f1419', border:'#6888a0', label:'#6888a0' },
+  group:   { bg:'#0a0a1a', border:'#3b82f6', label:'#3b82f6' },
+};
+
+function bsInit() {
+  if (BS.inited) { bsResize(); return; }
+  BS.inited = true;
+  BS.canvas = document.getElementById('bs-canvas');
+  BS.ctx = BS.canvas.getContext('2d');
+  bsResize();
+  bsBindEvents();
+  bsLoadFromDB();
+  window.addEventListener('resize', bsResize);
+}
+
+function bsResize() {
+  const el = document.getElementById('view-brainstorm');
+  if (!el || !BS.canvas) return;
+  BS.W = el.clientWidth;
+  BS.H = el.clientHeight;
+  BS.canvas.width = BS.W;
+  BS.canvas.height = BS.H;
+  bsDraw();
+}
+
+// ── Draw ──────────────────────────────────────────────────
+function bsDraw() {
+  if (!BS.ctx) return;
+  const ctx = BS.ctx;
+  ctx.clearRect(0, 0, BS.W, BS.H);
+
+  // Grid
+  ctx.save();
+  ctx.strokeStyle = '#161e28';
+  ctx.lineWidth = 1;
+  const gSize = 40 * BS.scale;
+  const ox = BS.pan.x % gSize;
+  const oy = BS.pan.y % gSize;
+  for (let x = ox; x < BS.W; x += gSize) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,BS.H); ctx.stroke(); }
+  for (let y = oy; y < BS.H; y += gSize) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(BS.W,y); ctx.stroke(); }
+  ctx.restore();
+
+  ctx.save();
+  ctx.translate(BS.pan.x, BS.pan.y);
+  ctx.scale(BS.scale, BS.scale);
+
+  // Edges first
+  BS.edges.forEach(e => bsDrawEdge(ctx, e));
+
+  // Connecting preview
+  if (BS.connecting && BS.connectFrom !== null && BS._mouseWorld) {
+    const n = BS.nodes[BS.connectFrom];
+    if (n) {
+      ctx.save();
+      ctx.strokeStyle = '#a855f780';
+      ctx.lineWidth = 2 / BS.scale;
+      ctx.setLineDash([6/BS.scale, 4/BS.scale]);
+      ctx.beginPath();
+      ctx.moveTo(n.x + n.w/2, n.y + n.h/2);
+      ctx.lineTo(BS._mouseWorld.x, BS._mouseWorld.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+  }
+
+  // Groups first (render behind)
+  BS.nodes.filter(n=>n.type==='group').forEach((n,i) => bsDrawNode(ctx, n, i));
+  BS.nodes.filter(n=>n.type!=='group').forEach((n,i) => {
+    const idx = BS.nodes.indexOf(n);
+    bsDrawNode(ctx, n, idx);
+  });
+
+  ctx.restore();
+}
+
+function bsDrawEdge(ctx, e) {
+  const a = BS.nodes[e.from], b = BS.nodes[e.to];
+  if (!a || !b) return;
+  const ax = a.x + a.w/2, ay = a.y + a.h/2;
+  const bx = b.x + b.w/2, by = b.y + b.h/2;
+  ctx.save();
+  ctx.strokeStyle = '#a855f740';
+  ctx.lineWidth = 1.5 / BS.scale;
+  // Bezier curve
+  const mx = (ax+bx)/2, my = (ay+by)/2;
+  const cx1 = ax + (mx-ax)*0.5, cy1 = ay;
+  const cx2 = bx + (mx-bx)*0.5, cy2 = by;
+  ctx.beginPath();
+  ctx.moveTo(ax, ay);
+  ctx.bezierCurveTo(cx1, cy1, cx2, cy2, bx, by);
+  ctx.stroke();
+  // Arrow
+  const angle = Math.atan2(by - cy2, bx - cx2);
+  const arrowSize = 8 / BS.scale;
+  ctx.fillStyle = '#a855f740';
+  ctx.beginPath();
+  ctx.moveTo(bx, by);
+  ctx.lineTo(bx - arrowSize*Math.cos(angle-0.4), by - arrowSize*Math.sin(angle-0.4));
+  ctx.lineTo(bx - arrowSize*Math.cos(angle+0.4), by - arrowSize*Math.sin(angle+0.4));
+  ctx.closePath();
+  ctx.fill();
+  // Label
+  if (e.label) {
+    ctx.fillStyle = '#6888a0';
+    ctx.font = `${10/BS.scale}px 'Space Mono'`;
+    ctx.textAlign = 'center';
+    ctx.fillText(e.label, mx, my - 6/BS.scale);
+  }
+  ctx.restore();
+}
+
+function bsDrawNode(ctx, n, idx) {
+  const col = BS_COLORS[n.type] || BS_COLORS.note;
+  const isSelected = BS.dragging === idx || (BS.connecting && BS.connectFrom === idx);
+  const pad = 14;
+
+  ctx.save();
+
+  if (n.type === 'group') {
+    ctx.fillStyle = col.bg + '80';
+    ctx.strokeStyle = isSelected ? col.border : col.border + '60';
+    ctx.lineWidth = (isSelected ? 2 : 1) / BS.scale;
+    ctx.setLineDash([8/BS.scale, 4/BS.scale]);
+    bsRoundRect(ctx, n.x, n.y, n.w, n.h, 8/BS.scale);
+    ctx.fill(); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = col.label + '90';
+    ctx.font = `bold ${11/BS.scale}px 'Space Mono'`;
+    ctx.textAlign = 'left';
+    ctx.fillText((n.title||'GROUP').toUpperCase(), n.x + pad, n.y + 18/BS.scale);
+    ctx.restore();
+    return;
+  }
+
+  // Shadow
+  ctx.shadowColor = isSelected ? col.border + '60' : '#00000080';
+  ctx.shadowBlur = isSelected ? 20/BS.scale : 8/BS.scale;
+
+  // Card background
+  ctx.fillStyle = col.bg;
+  ctx.strokeStyle = isSelected ? col.border : col.border + '60';
+  ctx.lineWidth = (isSelected ? 2 : 1) / BS.scale;
+  bsRoundRect(ctx, n.x, n.y, n.w, n.h, 6/BS.scale);
+  ctx.fill(); ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Type chip
+  const chipY = n.y + pad;
+  ctx.fillStyle = col.border + '30';
+  bsRoundRect(ctx, n.x + pad, chipY - 9/BS.scale, (n.type.length * 7 + 10)/BS.scale, 14/BS.scale, 2/BS.scale);
+  ctx.fill();
+  ctx.fillStyle = col.label;
+  ctx.font = `bold ${8/BS.scale}px 'Space Mono'`;
+  ctx.textAlign = 'left';
+  ctx.fillText(n.type.toUpperCase(), n.x + pad + 4/BS.scale, chipY + 1/BS.scale);
+
+  // Title
+  ctx.fillStyle = '#eef6ff';
+  ctx.font = `bold ${12/BS.scale}px 'Syne'`;
+  const titleY = chipY + 20/BS.scale;
+  bsWrapText(ctx, n.title || 'Untitled', n.x + pad, titleY, n.w - pad*2, 16/BS.scale, 2);
+
+  // Notes
+  if (n.notes) {
+    ctx.fillStyle = '#6888a0';
+    ctx.font = `${10/BS.scale}px 'Space Mono'`;
+    const notesY = titleY + 36/BS.scale;
+    bsWrapText(ctx, n.notes, n.x + pad, notesY, n.w - pad*2, 14/BS.scale, 3);
+  }
+
+  // Link badge
+  if (n.link) {
+    ctx.fillStyle = col.border + '40';
+    const linkY = n.y + n.h - 22/BS.scale;
+    ctx.font = `${9/BS.scale}px 'Space Mono'`;
+    ctx.fillStyle = col.label + '80';
+    ctx.fillText('⟶ ' + n.link, n.x + pad, linkY);
+  }
+
+  // Image thumbnail
+  if (n._img) {
+    try {
+      const imgY = n.y + (n.notes ? 100 : 70) / BS.scale;
+      const imgH = 60 / BS.scale;
+      const imgW = n.w - pad*2;
+      ctx.drawImage(n._img, n.x + pad, imgY, imgW, imgH);
+    } catch(e) {}
+  }
+
+  ctx.restore();
+}
+
+function bsRoundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.lineTo(x+w-r, y); ctx.arcTo(x+w, y, x+w, y+r, r);
+  ctx.lineTo(x+w, y+h-r); ctx.arcTo(x+w, y+h, x+w-r, y+h, r);
+  ctx.lineTo(x+r, y+h); ctx.arcTo(x, y+h, x, y+h-r, r);
+  ctx.lineTo(x, y+r); ctx.arcTo(x, y, x+r, y, r);
+  ctx.closePath();
+}
+
+function bsWrapText(ctx, text, x, y, maxW, lineH, maxLines) {
+  const words = String(text).split(' ');
+  let line = '', lines = [];
+  for (const w of words) {
+    const test = line + (line ? ' ' : '') + w;
+    if (ctx.measureText(test).width > maxW && line) {
+      lines.push(line); line = w;
+      if (lines.length >= maxLines) break;
+    } else { line = test; }
+  }
+  if (lines.length < maxLines) lines.push(line);
+  lines.forEach((l, i) => ctx.fillText(l, x, y + i*lineH));
+}
+
+// ── Event Handling ────────────────────────────────────────
+function bsBindEvents() {
+  const c = BS.canvas;
+  c.addEventListener('mousedown', bsOnMouseDown);
+  c.addEventListener('mousemove', bsOnMouseMove);
+  c.addEventListener('mouseup', bsOnMouseUp);
+  c.addEventListener('wheel', bsOnWheel, {passive:false});
+  c.addEventListener('contextmenu', bsOnRightClick);
+  c.addEventListener('dblclick', bsOnDblClick);
+  document.addEventListener('keydown', e => { if(e.key==='Escape') { bsCloseMenus(); BS.connecting=false; BS.connectFrom=null; document.getElementById('bs-connect-btn').classList.remove('active'); bsDraw(); }});
+}
+
+function bsWorldPos(e) {
+  const r = BS.canvas.getBoundingClientRect();
+  return {
+    x: (e.clientX - r.left - BS.pan.x) / BS.scale,
+    y: (e.clientY - r.top  - BS.pan.y) / BS.scale,
+  };
+}
+
+function bsHitNode(wx, wy) {
+  for (let i = BS.nodes.length-1; i >= 0; i--) {
+    const n = BS.nodes[i];
+    if (wx >= n.x && wx <= n.x+n.w && wy >= n.y && wy <= n.y+n.h) return i;
+  }
+  return -1;
+}
+
+function bsOnMouseDown(e) {
+  if (e.button === 2) return;
+  bsCloseMenus();
+  const wp = bsWorldPos(e);
+  const hit = bsHitNode(wp.x, wp.y);
+
+  if (BS.connecting) {
+    if (hit >= 0) {
+      if (BS.connectFrom === null) {
+        BS.connectFrom = hit;
+        BS.canvas.classList.add('connecting');
+      } else if (hit !== BS.connectFrom) {
+        BS.edges.push({from: BS.connectFrom, to: hit, label:''});
+        BS.connectFrom = null;
+        BS.connecting = false;
+        BS.canvas.classList.remove('connecting');
+        document.getElementById('bs-connect-btn').classList.remove('active');
+        bsScheduleSave();
+      }
+    }
+    bsDraw(); return;
+  }
+
+  if (hit >= 0) {
+    BS.dragging = hit;
+    BS.dragOffX = wp.x - BS.nodes[hit].x;
+    BS.dragOffY = wp.y - BS.nodes[hit].y;
+    BS.canvas.classList.add('grabbing');
+  } else {
+    BS.panning = true;
+    BS.panStart = {x: e.clientX, y: e.clientY};
+    BS.panOrigin = {x: BS.pan.x, y: BS.pan.y};
+    BS.canvas.classList.add('grabbing');
+  }
+}
+
+function bsOnMouseMove(e) {
+  const wp = bsWorldPos(e);
+  BS._mouseWorld = wp;
+
+  if (BS.dragging !== null) {
+    BS.nodes[BS.dragging].x = wp.x - BS.dragOffX;
+    BS.nodes[BS.dragging].y = wp.y - BS.dragOffY;
+    bsDraw(); return;
+  }
+  if (BS.panning) {
+    BS.pan.x = BS.panOrigin.x + (e.clientX - BS.panStart.x);
+    BS.pan.y = BS.panOrigin.y + (e.clientY - BS.panStart.y);
+    bsDraw(); return;
+  }
+  if (BS.connecting) bsDraw();
+}
+
+function bsOnMouseUp(e) {
+  if (BS.dragging !== null) {
+    bsScheduleSave();
+    BS.dragging = null;
+  }
+  BS.panning = false;
+  BS.canvas.classList.remove('grabbing');
+}
+
+function bsOnWheel(e) {
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? 1.08 : 0.93;
+  const r = BS.canvas.getBoundingClientRect();
+  const mx = e.clientX - r.left, my = e.clientY - r.top;
+  BS.pan.x = mx - (mx - BS.pan.x) * factor;
+  BS.pan.y = my - (my - BS.pan.y) * factor;
+  BS.scale = Math.max(0.2, Math.min(3, BS.scale * factor));
+  bsDraw();
+}
+
+function bsOnRightClick(e) {
+  e.preventDefault();
+  bsCloseMenus();
+  const wp = bsWorldPos(e);
+  const hit = bsHitNode(wp.x, wp.y);
+  if (hit < 0) return;
+  bsShowNodeMenu(e.clientX, e.clientY, hit);
+}
+
+function bsOnDblClick(e) {
+  const wp = bsWorldPos(e);
+  const hit = bsHitNode(wp.x, wp.y);
+  if (hit >= 0) bsEditNode(hit);
+  else bsAddNodeAt(wp.x, wp.y);
+}
+
+// ── Context Menu ──────────────────────────────────────────
+function bsShowNodeMenu(cx, cy, idx) {
+  let menu = document.getElementById('bs-node-menu');
+  if (!menu) { menu = document.createElement('div'); menu.id='bs-node-menu'; document.body.appendChild(menu); }
+  const n = BS.nodes[idx];
+  menu.innerHTML = `
+    <button onclick="bsEditNode(${idx});bsCloseMenus()">✏ EDIT</button>
+    <button onclick="bsDuplicateNode(${idx});bsCloseMenus()">⧉ DUPLICATE</button>
+    <div class="menu-sep"></div>
+    <button onclick="bsAddImageToNode(${idx});bsCloseMenus()">🖼 ADD IMAGE</button>
+    <button onclick="bsConnectFromMenu(${idx});bsCloseMenus()">⟷ CONNECT FROM HERE</button>
+    <div class="menu-sep"></div>
+    <button onclick="bsDeleteNode(${idx});bsCloseMenus()" style="color:var(--red)">✕ DELETE</button>`;
+  menu.style.cssText = `display:block;left:${cx}px;top:${cy}px`;
+  menu.style.display = 'block';
+  menu.style.left = cx + 'px';
+  menu.style.top = cy + 'px';
+  setTimeout(() => document.addEventListener('click', bsCloseMenus, {once:true}), 10);
+}
+
+function bsCloseMenus() {
+  const m = document.getElementById('bs-node-menu');
+  if (m) m.style.display = 'none';
+  const ed = document.getElementById('bs-node-editor');
+  if (ed) ed.style.display = 'none';
+}
+
+// ── Node CRUD ──────────────────────────────────────────────
+function bsAddNode() {
+  const cx = (BS.W/2 - BS.pan.x) / BS.scale;
+  const cy = (BS.H/2 - BS.pan.y) / BS.scale;
+  bsAddNodeAt(cx, cy);
+}
+
+function bsAddNodeAt(wx, wy) {
+  const node = {id: Date.now(), type:'idea', title:'New Idea', notes:'', link:'', x:wx-100, y:wy-50, w:200, h:110, imgData:null, _img:null};
+  BS.nodes.push(node);
+  bsDraw();
+  bsEditNode(BS.nodes.length - 1);
+}
+
+function bsAddGroup() {
+  const cx = (BS.W/2 - BS.pan.x) / BS.scale;
+  const cy = (BS.H/2 - BS.pan.y) / BS.scale;
+  const node = {id: Date.now(), type:'group', title:'Group', notes:'', link:'', x:cx-150, y:cy-100, w:320, h:220, imgData:null, _img:null};
+  BS.nodes.push(node);
+  bsDraw();
+  bsScheduleSave();
+}
+
+function bsEditNode(idx) {
+  const n = BS.nodes[idx];
+  let ed = document.getElementById('bs-node-editor');
+  if (!ed) { ed = document.createElement('div'); ed.id='bs-node-editor'; document.body.appendChild(ed); }
+  
+  const typeOpts = ['idea','feature','bug','ui','note','group'].map(t =>
+    `<option value="${t}" ${n.type===t?'selected':''}>${t.toUpperCase()}</option>`).join('');
+  
+  const linkOpts = [
+    '<option value="">None</option>',
+    ...['dashboard','bugs','features','roadmap','changelog','decisions','cleanup'].map(v =>
+      `<option value="${v}" ${n.link===v?'selected':''}>${v.toUpperCase()}</option>`)
+  ].join('');
+
+  ed.innerHTML = `
+    <h4>EDIT NODE</h4>
+    <label>TYPE</label>
+    <select id="ed-type">${typeOpts}</select>
+    <label>TITLE</label>
+    <input id="ed-title" value="${(n.title||'').replace(/"/g,'&quot;')}">
+    <label>NOTES</label>
+    <textarea id="ed-notes">${n.notes||''}</textarea>
+    <label>LINK TO HUB VIEW</label>
+    <select id="ed-link">${linkOpts}</select>
+    <div class="ed-row">
+      <button class="ed-btn cancel" onclick="bsCloseMenus()">CANCEL</button>
+      <button class="ed-btn" onclick="bsSaveNodeEdit(${idx})">SAVE</button>
+    </div>`;
+
+  // Position editor near node
+  const sx = (n.x + n.w + 20) * BS.scale + BS.pan.x;
+  const sy = n.y * BS.scale + BS.pan.y;
+  ed.style.display = 'block';
+  ed.style.left = Math.min(sx, BS.W - 360) + 'px';
+  ed.style.top  = Math.max(10, Math.min(sy, BS.H - 300)) + 'px';
+  document.getElementById('ed-title').focus();
+}
+
+function bsSaveNodeEdit(idx) {
+  const n = BS.nodes[idx];
+  n.type  = document.getElementById('ed-type').value;
+  n.title = document.getElementById('ed-title').value;
+  n.notes = document.getElementById('ed-notes').value;
+  n.link  = document.getElementById('ed-link').value;
+  // Resize node height based on content
+  n.h = 90 + (n.notes ? 40 : 0) + (n.imgData ? 70 : 0);
+  bsCloseMenus();
+  bsDraw();
+  bsScheduleSave();
+}
+
+function bsDuplicateNode(idx) {
+  const n = BS.nodes[idx];
+  const copy = {...n, id: Date.now(), x: n.x+30, y: n.y+30, _img: n._img};
+  BS.nodes.push(copy);
+  bsDraw(); bsScheduleSave();
+}
+
+function bsDeleteNode(idx) {
+  BS.edges = BS.edges.filter(e => e.from !== idx && e.to !== idx)
+    .map(e => ({...e, from: e.from > idx ? e.from-1 : e.from, to: e.to > idx ? e.to-1 : e.to}));
+  BS.nodes.splice(idx, 1);
+  bsDraw(); bsScheduleSave();
+}
+
+function bsConnectFromMenu(idx) {
+  BS.connecting = true;
+  BS.connectFrom = idx;
+  document.getElementById('bs-connect-btn').classList.add('active');
+  bsDraw();
+}
+
+function bsToggleConnect() {
+  BS.connecting = !BS.connecting;
+  BS.connectFrom = null;
+  document.getElementById('bs-connect-btn').classList.toggle('active', BS.connecting);
+  bsDraw();
+}
+
+function bsClearCanvas() {
+  if (!confirm('Clear the entire brainstorm board?')) return;
+  BS.nodes = []; BS.edges = [];
+  bsDraw(); bsScheduleSave();
+}
+
+// ── Image support ─────────────────────────────────────────
+function bsAddImageToNode(idx) {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = 'image/*';
+  input.onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = new Image();
+      img.onload = () => {
+        BS.nodes[idx].imgData = ev.target.result;
+        BS.nodes[idx]._img = img;
+        BS.nodes[idx].h = 180;
+        bsDraw(); bsScheduleSave();
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+  input.click();
+}
+
+// ── Persistence ───────────────────────────────────────────
+function bsScheduleSave() {
+  BS.dirty = true;
+  clearTimeout(BS.saveTimer);
+  BS.saveTimer = setTimeout(bsSaveToDB, 1500);
+}
+
+async function bsSaveToDB() {
+  if (!BS.dirty) return;
+  BS.dirty = false;
+  const payload = JSON.stringify({
+    nodes: BS.nodes.map(n => ({...n, _img: undefined})),
+    edges: BS.edges
+  });
+  const { error } = await supa.from('hub_brainstorm').upsert({id: 1, data: payload, updated_at: new Date().toISOString()});
+  if (error) console.error('[brainstorm] save failed:', error);
+}
+
+async function bsLoadFromDB() {
+  const { data, error } = await supa.from('hub_brainstorm').select('data').eq('id', 1).maybeSingle();
+  if (error || !data) {
+    bsDraw(); return;
+  }
+  try {
+    const parsed = JSON.parse(data.data);
+    BS.nodes = parsed.nodes || [];
+    BS.edges = parsed.edges || [];
+    // Reload images
+    BS.nodes.forEach(n => {
+      if (n.imgData) {
+        const img = new Image();
+        img.onload = () => { n._img = img; bsDraw(); };
+        img.src = n.imgData;
+      }
+    });
+  } catch(e) { console.error('[brainstorm] parse failed', e); }
+  bsDraw();
+}
+
 
 // ══════════════════════════════════════════════════════════
 // SUPABASE DATA LAYER
