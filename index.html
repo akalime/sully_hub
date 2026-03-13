@@ -1231,6 +1231,7 @@ const BS_COLORS = {
   bug:     { bg:'#1a0000', border:'#ff3548', label:'#ff3548' },
   ui:      { bg:'#00101a', border:'#00c8f0', label:'#00c8f0' },
   note:    { bg:'#0f1419', border:'#6888a0', label:'#6888a0' },
+  html:    { bg:'#0a1a10', border:'#00e87a', label:'#00e87a' },
   group:   { bg:'#0a0a1a', border:'#3b82f6', label:'#3b82f6' },
 };
 
@@ -1302,8 +1303,9 @@ function bsDraw() {
     const idx = BS.nodes.indexOf(n);
     bsDrawNode(ctx, n, idx);
   });
-
   ctx.restore();
+  // Sync iframes after canvas draw (iframes are DOM, not canvas)
+  bsSyncIframes();
 }
 
 function bsDrawEdge(ctx, e) {
@@ -1348,6 +1350,12 @@ function bsDrawNode(ctx, n, idx) {
   const pad = 14;
 
   ctx.save();
+
+  if (n.type === 'html') {
+    const isSelected = BS.dragging === idx || (BS.connecting && BS.connectFrom === idx);
+    bsDrawHtmlNode(ctx, n, isSelected);
+    return;
+  }
 
   if (n.type === 'group') {
     ctx.fillStyle = col.bg + '80';
@@ -1619,7 +1627,7 @@ function bsEditNode(idx) {
   let ed = document.getElementById('bs-node-editor');
   if (!ed) { ed = document.createElement('div'); ed.id='bs-node-editor'; document.body.appendChild(ed); }
   
-  const typeOpts = ['idea','feature','bug','ui','note','group'].map(t =>
+  const typeOpts = ['idea','feature','bug','ui','note','html','group'].map(t =>
     `<option value="${t}" ${n.type===t?'selected':''}>${t.toUpperCase()}</option>`).join('');
   
   const linkOpts = [
@@ -1638,6 +1646,12 @@ function bsEditNode(idx) {
     <textarea id="ed-notes">${n.notes||''}</textarea>
     <label>LINK TO HUB VIEW</label>
     <select id="ed-link">${linkOpts}</select>
+    <label>HTML PREVIEW (upload .html file)</label>
+    <div style="display:flex;gap:6px;align-items:center">
+      <button class="ed-btn cancel" style="flex:0 0 auto;padding:5px 10px" onclick="bsPickHtml(${idx})">📄 UPLOAD HTML</button>
+      <span id="ed-html-name" style="font-size:9px;color:var(--txt3)">${n.htmlName || 'none'}</span>
+      ${n.htmlSrc ? '<button class="ed-btn cancel" style="flex:0 0 auto;padding:5px 10px;color:var(--red)" onclick="bsClearHtml('+idx+')">✕ CLEAR</button>' : ''}
+    </div>
     <div class="ed-row">
       <button class="ed-btn cancel" onclick="bsCloseMenus()">CANCEL</button>
       <button class="ed-btn" onclick="bsSaveNodeEdit(${idx})">SAVE</button>
@@ -1659,7 +1673,7 @@ function bsSaveNodeEdit(idx) {
   n.notes = document.getElementById('ed-notes').value;
   n.link  = document.getElementById('ed-link').value;
   // Resize node height based on content
-  n.h = 90 + (n.notes ? 40 : 0) + (n.imgData ? 70 : 0);
+  n.h = 90 + (n.notes ? 40 : 0) + (n.imgData ? 70 : 0) + (n.htmlSrc ? 220 : 0);
   bsCloseMenus();
   bsDraw();
   bsScheduleSave();
@@ -1721,6 +1735,147 @@ function bsAddImageToNode(idx) {
   };
   input.click();
 }
+
+// ── HTML Preview nodes ───────────────────────────────────
+async function bsPickHtml(idx) {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.html,text/html';
+  input.onchange = async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Show uploading state
+    const nameEl = document.getElementById('ed-html-name');
+    if (nameEl) nameEl.textContent = 'uploading...';
+
+    const path = `brainstorm/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
+    const { data, error } = await supa.storage
+      .from('hub-renders')
+      .upload(path, file, { contentType: 'text/html', upsert: false });
+
+    if (error) {
+      if (nameEl) nameEl.textContent = 'upload failed: ' + error.message;
+      console.error('[bs] upload failed:', error);
+      return;
+    }
+
+    // Get public URL
+    const { data: urlData } = supa.storage.from('hub-renders').getPublicUrl(path);
+    const publicUrl = urlData.publicUrl;
+
+    BS.nodes[idx].htmlSrc  = publicUrl;
+    BS.nodes[idx].htmlName = file.name;
+    BS.nodes[idx].htmlPath = path;   // stored so we can delete later
+    BS.nodes[idx].type     = 'html';
+    BS.nodes[idx].h        = 90 + (BS.nodes[idx].notes ? 40 : 0) + 220;
+
+    bsCloseMenus();
+    bsDraw();
+    bsScheduleSave();
+  };
+  input.click();
+}
+
+async function bsClearHtml(idx) {
+  const n = BS.nodes[idx];
+  if (n.htmlPath) {
+    // Delete from Storage (best-effort)
+    await supa.storage.from('hub-renders').remove([n.htmlPath]);
+  }
+  n.htmlSrc  = null;
+  n.htmlName = null;
+  n.htmlPath = null;
+  n.h = 90 + (n.notes ? 40 : 0);
+  bsCloseMenus();
+  bsDraw();
+  bsScheduleSave();
+}
+
+// ── HTML iframe overlay management ───────────────────────
+// We keep a pool of iframes positioned over html nodes
+let _bsIframes = {}; // nodeId -> iframe el
+
+function bsSyncIframes() {
+  const keep = new Set();
+  BS.nodes.forEach((n, idx) => {
+    if (!n.htmlSrc) return;
+    keep.add(n.id);
+    let iframe = _bsIframes[n.id];
+    if (!iframe) {
+      iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position:absolute;border:none;border-radius:4px;pointer-events:none;overflow:hidden;';
+      iframe.sandbox = 'allow-scripts allow-same-origin';
+      document.getElementById('view-brainstorm').appendChild(iframe);
+      _bsIframes[n.id] = iframe;
+      // Public URL from Supabase Storage — load directly
+      iframe.src = n.htmlSrc;
+    }
+    // Position iframe over node
+    const sx = n.x * BS.scale + BS.pan.x;
+    const sy = (n.y + 80) * BS.scale + BS.pan.y;
+    const sw = (n.w - 28) * BS.scale;
+    const sh = 200 * BS.scale;
+    iframe.style.left   = sx + 14 * BS.scale + 'px';
+    iframe.style.top    = sy + 'px';
+    iframe.style.width  = sw + 'px';
+    iframe.style.height = sh + 'px';
+    iframe.style.transform = `scale(${BS.scale})`;
+    iframe.style.transformOrigin = '0 0';
+    iframe.style.width  = (n.w - 28) + 'px';
+    iframe.style.height = '200px';
+    iframe.style.left   = (n.x + 14) * BS.scale + BS.pan.x + 'px';
+    iframe.style.top    = (n.y + 80) * BS.scale + BS.pan.y + 'px';
+    iframe.style.transform = `scale(${BS.scale})`;
+    iframe.style.transformOrigin = '0 0';
+    iframe.style.display = 'block';
+    iframe.style.opacity = '0.92';
+  });
+  // Remove stale iframes
+  Object.keys(_bsIframes).forEach(id => {
+    if (!keep.has(parseInt(id))) {
+      _bsIframes[id].remove();
+      delete _bsIframes[id];
+    }
+  });
+}
+
+// ── HTML node draw (placeholder rect — iframe overlaid) ──
+function bsDrawHtmlNode(ctx, n, isSelected) {
+  const col = BS_COLORS.html;
+  ctx.save();
+  ctx.shadowColor = isSelected ? col.border + '60' : '#00000080';
+  ctx.shadowBlur  = isSelected ? 20/BS.scale : 8/BS.scale;
+  ctx.fillStyle   = col.bg;
+  ctx.strokeStyle = isSelected ? col.border : col.border + '60';
+  ctx.lineWidth   = (isSelected ? 2 : 1) / BS.scale;
+  bsRoundRect(ctx, n.x, n.y, n.w, n.h, 6/BS.scale);
+  ctx.fill(); ctx.stroke();
+  ctx.shadowBlur = 0;
+  // Header
+  ctx.fillStyle = col.border + '30';
+  bsRoundRect(ctx, n.x, n.y, n.w, 22/BS.scale, 6/BS.scale);
+  ctx.fill();
+  ctx.fillStyle = col.label;
+  ctx.font = `bold ${9/BS.scale}px 'Space Mono'`;
+  ctx.textAlign = 'left';
+  ctx.fillText('HTML  ' + (n.htmlName || ''), n.x + 10/BS.scale, n.y + 14/BS.scale);
+  // Title
+  ctx.fillStyle = '#eef6ff';
+  ctx.font = `bold ${11/BS.scale}px 'Syne'`;
+  ctx.fillText(n.title || 'Untitled', n.x + 10/BS.scale, n.y + 36/BS.scale);
+  // iframe placeholder area
+  ctx.fillStyle = '#000000a0';
+  ctx.fillRect(n.x + 14/BS.scale, n.y + 50/BS.scale, n.w - 28/BS.scale, 200/BS.scale);
+  ctx.fillStyle = col.border + '20';
+  ctx.font = `${9/BS.scale}px 'Space Mono'`;
+  ctx.textAlign = 'center';
+  ctx.fillText('LIVE PREVIEW', n.x + n.w/2, n.y + 155/BS.scale);
+  ctx.restore();
+}
+
+// ── Patch bsDraw to call syncIframes after drawing ────────
+
+// ── Patch bsDrawNode to handle html type ─────────────────
 
 // ── Persistence ───────────────────────────────────────────
 function bsScheduleSave() {
