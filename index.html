@@ -1240,6 +1240,2250 @@ function bsInit() {
   BS.inited = true;
   BS.canvas = document.getElementById('bs-canvas');
   BS.ctx = BS.canvas.getContext('2d');
+  bsBindEvents();
+  bsLoadFromDB();
+  window.addEventListener('resize', bsResize);
+  // Defer resize until flex layout has settled
+  requestAnimationFrame(() => requestAnimationFrame(() => bsResize()));
+}
+
+function bsResize() {
+  const el = document.getElementById('view-brainstorm');
+  if (!el || !BS.canvas) return;
+  const rect = el.getBoundingClientRect();
+  BS.W = rect.width  || el.offsetWidth  || 800;
+  BS.H = rect.height || el.offsetHeight || 600;
+  if (BS.W < 10 || BS.H < 10) return; // not visible yet
+  BS.canvas.width  = BS.W;
+  BS.canvas.height = BS.H;
+  bsDraw();
+}
+
+// ── Draw ──────────────────────────────────────────────────
+function bsDraw() {
+  if (!BS.ctx) return;
+  const ctx = BS.ctx;
+  ctx.clearRect(0, 0, BS.W, BS.H);
+
+  // Grid
+  ctx.save();
+  ctx.strokeStyle = '#161e28';
+  ctx.lineWidth = 1;
+  const gSize = 40 * BS.scale;
+  const ox = BS.pan.x % gSize;
+  const oy = BS.pan.y % gSize;
+  for (let x = ox; x < BS.W; x += gSize) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,BS.H); ctx.stroke(); }
+  for (let y = oy; y < BS.H; y += gSize) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(BS.W,y); ctx.stroke(); }
+  ctx.restore();
+
+  ctx.save();
+  ctx.translate(BS.pan.x, BS.pan.y);
+  ctx.scale(BS.scale, BS.scale);
+
+  // Edges first
+  BS.edges.forEach(e => bsDrawEdge(ctx, e));
+
+  // Connecting preview
+  if (BS.connecting && BS.connectFrom !== null && BS._mouseWorld) {
+    const n = BS.nodes[BS.connectFrom];
+    if (n) {
+      ctx.save();
+      ctx.strokeStyle = '#a855f780';
+      ctx.lineWidth = 2 / BS.scale;
+      ctx.setLineDash([6/BS.scale, 4/BS.scale]);
+      ctx.beginPath();
+      ctx.moveTo(n.x + n.w/2, n.y + n.h/2);
+      ctx.lineTo(BS._mouseWorld.x, BS._mouseWorld.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+  }
+
+  // Groups first (render behind)
+  BS.nodes.filter(n=>n.type==='group').forEach((n,i) => bsDrawNode(ctx, n, i));
+  BS.nodes.filter(n=>n.type!=='group').forEach((n,i) => {
+    const idx = BS.nodes.indexOf(n);
+    bsDrawNode(ctx, n, idx);
+  });
+  ctx.restore();
+}
+
+function bsDrawEdge(ctx, e) {
+  const a = BS.nodes[e.from], b = BS.nodes[e.to];
+  if (!a || !b) return;
+  const ax = a.x + a.w/2, ay = a.y + a.h/2;
+  const bx = b.x + b.w/2, by = b.y + b.h/2;
+  ctx.save();
+  ctx.strokeStyle = '#a855f740';
+  ctx.lineWidth = 1.5 / BS.scale;
+  // Bezier curve
+  const mx = (ax+bx)/2, my = (ay+by)/2;
+  const cx1 = ax + (mx-ax)*0.5, cy1 = ay;
+  const cx2 = bx + (mx-bx)*0.5, cy2 = by;
+  ctx.beginPath();
+  ctx.moveTo(ax, ay);
+  ctx.bezierCurveTo(cx1, cy1, cx2, cy2, bx, by);
+  ctx.stroke();
+  // Arrow
+  const angle = Math.atan2(by - cy2, bx - cx2);
+  const arrowSize = 8 / BS.scale;
+  ctx.fillStyle = '#a855f740';
+  ctx.beginPath();
+  ctx.moveTo(bx, by);
+  ctx.lineTo(bx - arrowSize*Math.cos(angle-0.4), by - arrowSize*Math.sin(angle-0.4));
+  ctx.lineTo(bx - arrowSize*Math.cos(angle+0.4), by - arrowSize*Math.sin(angle+0.4));
+  ctx.closePath();
+  ctx.fill();
+  // Label
+  if (e.label) {
+    ctx.fillStyle = '#6888a0';
+    ctx.font = `${10/BS.scale}px 'Space Mono'`;
+    ctx.textAlign = 'center';
+    ctx.fillText(e.label, mx, my - 6/BS.scale);
+  }
+  ctx.restore();
+}
+
+function bsDrawNode(ctx, n, idx) {
+  const col = BS_COLORS[n.type] || BS_COLORS.note;
+  const isSelected = BS.dragging === idx || (BS.connecting && BS.connectFrom === idx);
+  const pad = 14;
+
+  ctx.save();
+
+  if (n.type === 'html') {
+    const isSelected = BS.dragging === idx || (BS.connecting && BS.connectFrom === idx);
+    bsDrawHtmlNode(ctx, n, isSelected);
+    return;
+  }
+
+  if (n.type === 'group') {
+    ctx.fillStyle = col.bg + '80';
+    ctx.strokeStyle = isSelected ? col.border : col.border + '60';
+    ctx.lineWidth = (isSelected ? 2 : 1) / BS.scale;
+    ctx.setLineDash([8/BS.scale, 4/BS.scale]);
+    bsRoundRect(ctx, n.x, n.y, n.w, n.h, 8/BS.scale);
+    ctx.fill(); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = col.label + '90';
+    ctx.font = `bold ${11/BS.scale}px 'Space Mono'`;
+    ctx.textAlign = 'left';
+    ctx.fillText((n.title||'GROUP').toUpperCase(), n.x + pad, n.y + 18/BS.scale);
+    ctx.restore();
+    return;
+  }
+
+  // Shadow
+  ctx.shadowColor = isSelected ? col.border + '60' : '#00000080';
+  ctx.shadowBlur = isSelected ? 20/BS.scale : 8/BS.scale;
+
+  // Card background
+  ctx.fillStyle = col.bg;
+  ctx.strokeStyle = isSelected ? col.border : col.border + '60';
+  ctx.lineWidth = (isSelected ? 2 : 1) / BS.scale;
+  bsRoundRect(ctx, n.x, n.y, n.w, n.h, 6/BS.scale);
+  ctx.fill(); ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Type chip
+  const chipY = n.y + pad;
+  ctx.fillStyle = col.border + '30';
+  bsRoundRect(ctx, n.x + pad, chipY - 9/BS.scale, (n.type.length * 7 + 10)/BS.scale, 14/BS.scale, 2/BS.scale);
+  ctx.fill();
+  ctx.fillStyle = col.label;
+  ctx.font = `bold ${8/BS.scale}px 'Space Mono'`;
+  ctx.textAlign = 'left';
+  ctx.fillText(n.type.toUpperCase(), n.x + pad + 4/BS.scale, chipY + 1/BS.scale);
+
+  // Title
+  ctx.fillStyle = '#eef6ff';
+  ctx.font = `bold ${12/BS.scale}px 'Syne'`;
+  const titleY = chipY + 20/BS.scale;
+  bsWrapText(ctx, n.title || 'Untitled', n.x + pad, titleY, n.w - pad*2, 16/BS.scale, 2);
+
+  // Notes
+  if (n.notes) {
+    ctx.fillStyle = '#6888a0';
+    ctx.font = `${10/BS.scale}px 'Space Mono'`;
+    const notesY = titleY + 36/BS.scale;
+    bsWrapText(ctx, n.notes, n.x + pad, notesY, n.w - pad*2, 14/BS.scale, 3);
+  }
+
+  // Link badge
+  if (n.link) {
+    ctx.fillStyle = col.border + '40';
+    const linkY = n.y + n.h - 22/BS.scale;
+    ctx.font = `${9/BS.scale}px 'Space Mono'`;
+    ctx.fillStyle = col.label + '80';
+    ctx.fillText('⟶ ' + n.link, n.x + pad, linkY);
+  }
+
+  // Image thumbnail
+  if (n._img) {
+    try {
+      const imgY = n.y + (n.notes ? 100 : 70) / BS.scale;
+      const imgH = 60 / BS.scale;
+      const imgW = n.w - pad*2;
+      ctx.drawImage(n._img, n.x + pad, imgY, imgW, imgH);
+    } catch(e) {}
+  }
+
+  ctx.restore();
+}
+
+function bsRoundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.lineTo(x+w-r, y); ctx.arcTo(x+w, y, x+w, y+r, r);
+  ctx.lineTo(x+w, y+h-r); ctx.arcTo(x+w, y+h, x+w-r, y+h, r);
+  ctx.lineTo(x+r, y+h); ctx.arcTo(x, y+h, x, y+h-r, r);
+  ctx.lineTo(x, y+r); ctx.arcTo(x, y, x+r, y, r);
+  ctx.closePath();
+}
+
+function bsWrapText(ctx, text, x, y, maxW, lineH, maxLines) {
+  const words = String(text).split(' ');
+  let line = '', lines = [];
+  for (const w of words) {
+    const test = line + (line ? ' ' : '') + w;
+    if (ctx.measureText(test).width > maxW && line) {
+      lines.push(line); line = w;
+      if (lines.length >= maxLines) break;
+    } else { line = test; }
+  }
+  if (lines.length < maxLines) lines.push(line);
+  lines.forEach((l, i) => ctx.fillText(l, x, y + i*lineH));
+}
+
+// ── Event Handling ────────────────────────────────────────
+function bsBindEvents() {
+  const c = BS.canvas;
+  c.addEventListener('mousedown', bsOnMouseDown);
+  c.addEventListener('mousemove', bsOnMouseMove);
+  c.addEventListener('mouseup', bsOnMouseUp);
+  c.addEventListener('wheel', bsOnWheel, {passive:false});
+  c.addEventListener('contextmenu', bsOnRightClick);
+  c.addEventListener('dblclick', bsOnDblClick);
+  document.addEventListener('keydown', e => { if(e.key==='Escape') { bsCloseMenus(); BS.connecting=false; BS.connectFrom=null; document.getElementById('bs-connect-btn').classList.remove('active'); bsDraw(); }});
+}
+
+function bsWorldPos(e) {
+  const r = BS.canvas.getBoundingClientRect();
+  return {
+    x: (e.clientX - r.left - BS.pan.x) / BS.scale,
+    y: (e.clientY - r.top  - BS.pan.y) / BS.scale,
+  };
+}
+
+function bsHitNode(wx, wy) {
+  for (let i = BS.nodes.length-1; i >= 0; i--) {
+    const n = BS.nodes[i];
+    if (wx >= n.x && wx <= n.x+n.w && wy >= n.y && wy <= n.y+n.h) return i;
+  }
+  return -1;
+}
+
+function bsOnMouseDown(e) {
+  if (e.button === 2) return;
+  bsCloseMenus();
+  const wp = bsWorldPos(e);
+  const hit = bsHitNode(wp.x, wp.y);
+
+  if (BS.connecting) {
+    if (hit >= 0) {
+      if (BS.connectFrom === null) {
+        BS.connectFrom = hit;
+        BS.canvas.classList.add('connecting');
+      } else if (hit !== BS.connectFrom) {
+        BS.edges.push({from: BS.connectFrom, to: hit, label:''});
+        BS.connectFrom = null;
+        BS.connecting = false;
+        BS.canvas.classList.remove('connecting');
+        document.getElementById('bs-connect-btn').classList.remove('active');
+        bsScheduleSave();
+      }
+    }
+    bsDraw(); return;
+  }
+
+  if (hit >= 0) {
+    BS.dragging = hit;
+    BS.dragOffX = wp.x - BS.nodes[hit].x;
+    BS.dragOffY = wp.y - BS.nodes[hit].y;
+    BS.canvas.classList.add('grabbing');
+  } else {
+    BS.panning = true;
+    BS.panStart = {x: e.clientX, y: e.clientY};
+    BS.panOrigin = {x: BS.pan.x, y: BS.pan.y};
+    BS.canvas.classList.add('grabbing');
+  }
+}
+
+function bsOnMouseMove(e) {
+  const wp = bsWorldPos(e);
+  BS._mouseWorld = wp;
+
+  if (BS.dragging !== null) {
+    BS.nodes[BS.dragging].x = wp.x - BS.dragOffX;
+    BS.nodes[BS.dragging].y = wp.y - BS.dragOffY;
+    bsDraw(); return;
+  }
+  if (BS.panning) {
+    BS.pan.x = BS.panOrigin.x + (e.clientX - BS.panStart.x);
+    BS.pan.y = BS.panOrigin.y + (e.clientY - BS.panStart.y);
+    bsDraw(); return;
+  }
+  if (BS.connecting) bsDraw();
+}
+
+function bsOnMouseUp(e) {
+  if (BS.dragging !== null) {
+    bsScheduleSave();
+    BS.dragging = null;
+  }
+  BS.panning = false;
+  BS.canvas.classList.remove('grabbing');
+}
+
+function bsOnWheel(e) {
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? 1.08 : 0.93;
+  const r = BS.canvas.getBoundingClientRect();
+  const mx = e.clientX - r.left, my = e.clientY - r.top;
+  BS.pan.x = mx - (mx - BS.pan.x) * factor;
+  BS.pan.y = my - (my - BS.pan.y) * factor;
+  BS.scale = Math.max(0.2, Math.min(3, BS.scale * factor));
+  bsDraw();
+}
+
+function bsOnRightClick(e) {
+  e.preventDefault();
+  bsCloseMenus();
+  const wp = bsWorldPos(e);
+  const hit = bsHitNode(wp.x, wp.y);
+  if (hit < 0) return;
+  bsShowNodeMenu(e.clientX, e.clientY, hit);
+}
+
+function bsOnDblClick(e) {
+  const wp = bsWorldPos(e);
+  const hit = bsHitNode(wp.x, wp.y);
+  if (hit >= 0) bsEditNode(hit);
+  else bsAddNodeAt(wp.x, wp.y);
+}
+
+// ── Context Menu ──────────────────────────────────────────
+function bsShowNodeMenu(cx, cy, idx) {
+  let menu = document.getElementById('bs-node-menu');
+  if (!menu) { menu = document.createElement('div'); menu.id='bs-node-menu'; document.body.appendChild(menu); }
+  const n = BS.nodes[idx];
+  menu.innerHTML = `
+    <button onclick="bsEditNode(${idx});bsCloseMenus()">✏ EDIT</button>
+    <button onclick="bsDuplicateNode(${idx});bsCloseMenus()">⧉ DUPLICATE</button>
+    <div class="menu-sep"></div>
+    <button onclick="bsCaptureThumb(${idx});bsCloseMenus()">📸 CAPTURE PREVIEW</button>
+    <button onclick="bsAddImageToNode(${idx});bsCloseMenus()">🖼 ADD IMAGE</button>
+    <button onclick="bsConnectFromMenu(${idx});bsCloseMenus()">⟷ CONNECT FROM HERE</button>
+    <div class="menu-sep"></div>
+    <button onclick="bsDeleteNode(${idx});bsCloseMenus()" style="color:var(--red)">✕ DELETE</button>`;
+  menu.style.cssText = `display:block;left:${cx}px;top:${cy}px`;
+  menu.style.display = 'block';
+  menu.style.left = cx + 'px';
+  menu.style.top = cy + 'px';
+  setTimeout(() => document.addEventListener('click', bsCloseMenus, {once:true}), 10);
+}
+
+function bsCloseMenus() {
+  const m = document.getElementById('bs-node-menu');
+  if (m) m.style.display = 'none';
+  const ed = document.getElementById('bs-node-editor');
+  if (ed) ed.style.display = 'none';
+}
+
+// ── Node CRUD ──────────────────────────────────────────────
+function bsAddNode() {
+  const cx = (BS.W/2 - BS.pan.x) / BS.scale;
+  const cy = (BS.H/2 - BS.pan.y) / BS.scale;
+  bsAddNodeAt(cx, cy);
+}
+
+function bsAddNodeAt(wx, wy) {
+  const node = {id: Date.now(), type:'idea', title:'New Idea', notes:'', link:'', x:wx-100, y:wy-50, w:200, h:110, imgData:null, _img:null};
+  BS.nodes.push(node);
+  bsDraw();
+  bsEditNode(BS.nodes.length - 1);
+}
+
+function bsAddGroup() {
+  const cx = (BS.W/2 - BS.pan.x) / BS.scale;
+  const cy = (BS.H/2 - BS.pan.y) / BS.scale;
+  const node = {id: Date.now(), type:'group', title:'Group', notes:'', link:'', x:cx-150, y:cy-100, w:320, h:220, imgData:null, _img:null};
+  BS.nodes.push(node);
+  bsDraw();
+  bsScheduleSave();
+}
+
+function bsEditNode(idx) {
+  const n = BS.nodes[idx];
+  let ed = document.getElementById('bs-node-editor');
+  if (!ed) { ed = document.createElement('div'); ed.id='bs-node-editor'; document.body.appendChild(ed); }
+  
+  const typeOpts = ['idea','feature','bug','ui','note','html','group'].map(t =>
+    `<option value="${t}" ${n.type===t?'selected':''}>${t.toUpperCase()}</option>`).join('');
+  
+  const linkOpts = [
+    '<option value="">None</option>',
+    ...['dashboard','bugs','features','roadmap','changelog','decisions','cleanup'].map(v =>
+      `<option value="${v}" ${n.link===v?'selected':''}>${v.toUpperCase()}</option>`)
+  ].join('');
+
+  ed.innerHTML = `
+    <h4>EDIT NODE</h4>
+    <label>TYPE</label>
+    <select id="ed-type">${typeOpts}</select>
+    <label>TITLE</label>
+    <input id="ed-title" value="${(n.title||'').replace(/"/g,'&quot;')}">
+    <label>NOTES</label>
+    <textarea id="ed-notes">${n.notes||''}</textarea>
+    <label>LINK TO HUB VIEW</label>
+    <select id="ed-link">${linkOpts}</select>
+    <label>HTML PREVIEW (upload .html file)</label>
+    <div style="display:flex;gap:6px;align-items:center">
+      <button class="ed-btn cancel" style="flex:0 0 auto;padding:5px 10px" onclick="bsPickHtml(${idx})">📄 UPLOAD HTML</button>
+      <span id="ed-html-name" style="font-size:9px;color:var(--txt3)">${n.htmlName || 'none'}</span>
+      ${n.htmlSrc ? '<button class="ed-btn cancel" style="flex:0 0 auto;padding:5px 10px;color:var(--red)" onclick="bsClearHtml('+idx+')">✕ CLEAR</button>' : ''}
+    </div>
+    <div class="ed-row">
+      <button class="ed-btn cancel" onclick="bsCloseMenus()">CANCEL</button>
+      <button class="ed-btn" onclick="bsSaveNodeEdit(${idx})">SAVE</button>
+    </div>`;
+
+  // Position editor near node
+  const sx = (n.x + n.w + 20) * BS.scale + BS.pan.x;
+  const sy = n.y * BS.scale + BS.pan.y;
+  ed.style.display = 'block';
+  ed.style.left = Math.min(sx, BS.W - 360) + 'px';
+  ed.style.top  = Math.max(10, Math.min(sy, BS.H - 300)) + 'px';
+  document.getElementById('ed-title').focus();
+}
+
+function bsSaveNodeEdit(idx) {
+  const n = BS.nodes[idx];
+  n.type  = document.getElementById('ed-type').value;
+  n.title = document.getElementById('ed-title').value;
+  n.notes = document.getElementById('ed-notes').value;
+  n.link  = document.getElementById('ed-link').value;
+  // Resize node height based on content
+  n.h = 90 + (n.notes ? 40 : 0) + (n.imgData ? 70 : 0) + (n.htmlSrc ? 220 : 0);
+  bsCloseMenus();
+  bsDraw();
+  bsScheduleSave();
+}
+
+function bsDuplicateNode(idx) {
+  const n = BS.nodes[idx];
+  const copy = {...n, id: Date.now(), x: n.x+30, y: n.y+30, _img: n._img};
+  BS.nodes.push(copy);
+  bsDraw(); bsScheduleSave();
+}
+
+function bsDeleteNode(idx) {
+  BS.edges = BS.edges.filter(e => e.from !== idx && e.to !== idx)
+    .map(e => ({...e, from: e.from > idx ? e.from-1 : e.from, to: e.to > idx ? e.to-1 : e.to}));
+  BS.nodes.splice(idx, 1);
+  bsDraw(); bsScheduleSave();
+}
+
+function bsConnectFromMenu(idx) {
+  BS.connecting = true;
+  BS.connectFrom = idx;
+  document.getElementById('bs-connect-btn').classList.add('active');
+  bsDraw();
+}
+
+function bsToggleConnect() {
+  BS.connecting = !BS.connecting;
+  BS.connectFrom = null;
+  document.getElementById('bs-connect-btn').classList.toggle('active', BS.connecting);
+  bsDraw();
+}
+
+function bsClearCanvas() {
+  if (!confirm('Clear the entire brainstorm board?')) return;
+  BS.nodes = []; BS.edges = [];
+  bsDraw(); bsScheduleSave();
+}
+
+// ── Image support ─────────────────────────────────────────
+function bsAddImageToNode(idx) {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = 'image/*';
+  input.onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = new Image();
+      img.onload = () => {
+        BS.nodes[idx].imgData = ev.target.result;
+        BS.nodes[idx]._img = img;
+        BS.nodes[idx].h = 180;
+        bsDraw(); bsScheduleSave();
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+  input.click();
+}
+
+// ── HTML Preview nodes ───────────────────────────────────
+async function bsPickHtml(idx) {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.html,text/html';
+  input.onchange = async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Show uploading state
+    const nameEl = document.getElementById('ed-html-name');
+    if (nameEl) nameEl.textContent = 'uploading...';
+
+    const path = `brainstorm/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
+    const { data, error } = await supa.storage
+      .from('hub-renders')
+      .upload(path, file, { contentType: 'text/html', upsert: false });
+
+    if (error) {
+      if (nameEl) nameEl.textContent = 'upload failed: ' + error.message;
+      console.error('[bs] upload failed:', error);
+      return;
+    }
+
+    // Get public URL
+    const { data: urlData } = supa.storage.from('hub-renders').getPublicUrl(path);
+    const publicUrl = urlData.publicUrl;
+
+    BS.nodes[idx].htmlSrc  = publicUrl;
+    BS.nodes[idx].htmlName = file.name;
+    BS.nodes[idx].htmlPath = path;   // stored so we can delete later
+    BS.nodes[idx].type     = 'html';
+    BS.nodes[idx].h        = 90 + (BS.nodes[idx].notes ? 40 : 0) + 220;
+
+    bsCloseMenus();
+    bsDraw();
+    bsScheduleSave();
+  };
+  input.click();
+}
+
+// ── Thumbnail capture via html2canvas ────────────────────
+async function bsCaptureThumb(idx) {
+  const n = BS.nodes[idx];
+  if (!n.htmlSrc) { showToast('No HTML loaded on this node', 'error'); return; }
+
+  n._thumbLoading = true;
+  bsDraw();
+
+  // Create hidden iframe to load the HTML
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1280px;height:800px;border:none;';
+  iframe.sandbox = 'allow-scripts allow-same-origin';
+  document.body.appendChild(iframe);
+
+  iframe.onload = async () => {
+    try {
+      await new Promise(r => setTimeout(r, 600)); // let page render
+      const iDoc = iframe.contentDocument || iframe.contentWindow.document;
+      const thumbCanvas = await html2canvas(iDoc.body, {
+        width: 1280, height: 800,
+        scale: 0.25,
+        backgroundColor: '#07090c',
+        logging: false,
+        allowTaint: true,
+        useCORS: true,
+      });
+      // Store as Image object
+      const img = new Image();
+      img.onload = () => {
+        n._thumb = img;
+        n._thumbLoading = false;
+        n._thumbData = thumbCanvas.toDataURL('image/jpeg', 0.7);
+        bsDraw();
+        bsScheduleSave();
+      };
+      img.src = thumbCanvas.toDataURL('image/jpeg', 0.7);
+    } catch(e) {
+      console.error('[bs] capture failed:', e);
+      n._thumbLoading = false;
+      showToast('Capture failed: ' + e.message, 'error');
+      bsDraw();
+    }
+    iframe.remove();
+  };
+
+  iframe.src = n.htmlSrc;
+}
+
+async function bsClearHtml(idx) {
+  const n = BS.nodes[idx];
+  if (n.htmlPath) {
+    // Delete from Storage (best-effort)
+    await supa.storage.from('hub-renders').remove([n.htmlPath]);
+  }
+  n.htmlSrc  = null;
+  n.htmlName = null;
+  n.htmlPath = null;
+  n.h = 90 + (n.notes ? 40 : 0);
+  bsCloseMenus();
+  bsDraw();
+  bsScheduleSave();
+}
+
+// iframe system removed — using html2canvas thumbnail approach
+
+// ── HTML node draw — renders thumbnail captured via html2canvas ──
+function bsDrawHtmlNode(ctx, n, isSelected) {
+  const col = BS_COLORS.html;
+  const pad = 12;
+  ctx.save();
+  ctx.shadowColor = isSelected ? col.border + '60' : '#00000080';
+  ctx.shadowBlur  = isSelected ? 20/BS.scale : 8/BS.scale;
+  ctx.fillStyle   = col.bg;
+  ctx.strokeStyle = isSelected ? col.border : col.border + '60';
+  ctx.lineWidth   = (isSelected ? 2 : 1) / BS.scale;
+  bsRoundRect(ctx, n.x, n.y, n.w, n.h, 6/BS.scale);
+  ctx.fill(); ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Header strip
+  ctx.fillStyle = col.border + '25';
+  ctx.fillRect(n.x, n.y, n.w, 28/BS.scale);
+  ctx.fillStyle = col.label;
+  ctx.font = `bold ${9/BS.scale}px 'Space Mono'`;
+  ctx.textAlign = 'left';
+  ctx.fillText('⬡ HTML', n.x + pad, n.y + 10/BS.scale);
+  ctx.fillStyle = '#6888a0';
+  ctx.font = `${8/BS.scale}px 'Space Mono'`;
+  ctx.fillText(n.htmlName || '', n.x + pad + 44/BS.scale, n.y + 10/BS.scale);
+
+  // Title
+  ctx.fillStyle = '#eef6ff';
+  ctx.font = `bold ${12/BS.scale}px 'Syne'`;
+  ctx.textAlign = 'left';
+  ctx.fillText(n.title || 'Untitled', n.x + pad, n.y + 42/BS.scale);
+
+  // Thumbnail area
+  const thumbY = n.y + 54/BS.scale;
+  const thumbW = n.w - pad*2;
+  const thumbH = n.h - 70/BS.scale;
+
+  if (n._thumb) {
+    // Draw captured thumbnail
+    ctx.save();
+    bsRoundRect(ctx, n.x + pad, thumbY, thumbW, thumbH, 3/BS.scale);
+    ctx.clip();
+    ctx.drawImage(n._thumb, n.x + pad, thumbY, thumbW, thumbH);
+    ctx.restore();
+    // Subtle overlay border
+    ctx.strokeStyle = col.border + '40';
+    ctx.lineWidth = 1/BS.scale;
+    bsRoundRect(ctx, n.x + pad, thumbY, thumbW, thumbH, 3/BS.scale);
+    ctx.stroke();
+  } else if (n._thumbLoading) {
+    // Loading state
+    ctx.fillStyle = '#0a1a10';
+    bsRoundRect(ctx, n.x + pad, thumbY, thumbW, thumbH, 3/BS.scale);
+    ctx.fill();
+    ctx.fillStyle = col.border + '60';
+    ctx.font = `${9/BS.scale}px 'Space Mono'`;
+    ctx.textAlign = 'center';
+    ctx.fillText('RENDERING...', n.x + n.w/2, thumbY + thumbH/2);
+  } else {
+    // No thumbnail yet — show placeholder
+    ctx.fillStyle = '#0a1212';
+    bsRoundRect(ctx, n.x + pad, thumbY, thumbW, thumbH, 3/BS.scale);
+    ctx.fill();
+    ctx.fillStyle = col.border + '30';
+    ctx.font = `${9/BS.scale}px 'Space Mono'`;
+    ctx.textAlign = 'center';
+    ctx.fillText('NO PREVIEW', n.x + n.w/2, thumbY + thumbH/2 - 7/BS.scale);
+    ctx.fillStyle = '#3a5060';
+    ctx.font = `${8/BS.scale}px 'Space Mono'`;
+    ctx.fillText('RIGHT-CLICK → CAPTURE', n.x + n.w/2, thumbY + thumbH/2 + 8/BS.scale);
+  }
+  ctx.restore();
+}
+
+// ── Patch bsDraw to call syncIframes after drawing ────────
+
+// ── Patch bsDrawNode to handle html type ─────────────────
+
+// ── Persistence ───────────────────────────────────────────
+function bsScheduleSave() {
+  BS.dirty = true;
+  clearTimeout(BS.saveTimer);
+  BS.saveTimer = setTimeout(bsSaveToDB, 1500);
+}
+
+async function bsSaveToDB() {
+  if (!BS.dirty) return;
+  BS.dirty = false;
+  const payload = JSON.stringify({
+    nodes: BS.nodes.map(n => ({...n, _img: undefined, _thumb: undefined, _thumbLoading: undefined})),
+    edges: BS.edges
+  });
+  const { error } = await supa.from('hub_brainstorm').upsert({id: 1, data: payload, updated_at: new Date().toISOString()});
+  if (error) console.error('[brainstorm] save failed:', error);
+}
+
+async function bsLoadFromDB() {
+  const { data, error } = await supa.from('hub_brainstorm').select('data').eq('id', 1).maybeSingle();
+  if (error || !data) {
+    bsDraw(); return;
+  }
+  try {
+    const parsed = JSON.parse(data.data);
+    BS.nodes = parsed.nodes || [];
+    BS.edges = parsed.edges || [];
+    // Reload images and thumbnails
+    BS.nodes.forEach(n => {
+      if (n.imgData) {
+        const img = new Image();
+        img.onload = () => { n._img = img; bsDraw(); };
+        img.src = n.imgData;
+      }
+      if (n._thumbData) {
+        const img = new Image();
+        img.onload = () => { n._thumb = img; bsDraw(); };
+        img.src = n._thumbData;
+      }
+    });
+  } catch(e) { console.error('[brainstorm] parse failed', e); }
+  bsDraw();
+}
+
+
+// ══════════════════════════════════════════════════════════
+// SUPABASE DATA LAYER
+// ══════════════════════════════════════════════════════════
+
+function groupFeatures(rows) {
+  const map = {};
+  rows.forEach(r => {
+    if (!map[r.group_name]) map[r.group_name] = { group: r.group_name, items: [] };
+    map[r.group_name].items.push({ id: r.id, name: r.name, status: r.status, note: r.note || '' });
+  });
+  return Object.values(map);
+}
+
+async function loadAllData() {
+  showLoadingOverlay(true);
+  try {
+    const [bugsRes, tasksRes, featuresRes] = await Promise.all([
+      supa.from('hub_bugs').select('*').order('id'),
+      supa.from('hub_tasks').select('*').order('sprint').order('id'),
+      supa.from('hub_features').select('*').order('id'),
+    ]);
+    if (bugsRes.error) throw bugsRes.error;
+    if (tasksRes.error) throw tasksRes.error;
+    if (featuresRes.error) throw featuresRes.error;
+
+    BUGS = bugsRes.data.map(r => ({
+      id: r.id, severity: r.severity, title: r.title,
+      file: r.file || '', desc: r.description || '', fix: r.fix || '', status: r.status
+    }));
+
+    TASKS = tasksRes.data.map(r => ({
+      id: r.id, sprint: r.sprint,
+      sprintLabel: r.sprint_label || ('SPRINT ' + r.sprint),
+      sprintColor: r.sprint_color || 'var(--accent)',
+      sprintTitle: r.sprint_title || '',
+      sprintSub: r.sprint_sub || '',
+      title: r.title, file: r.file || '', desc: r.description || '',
+      done: r.done
+    }));
+
+    FEATURES_RAW = featuresRes.data;
+    FEATURES = groupFeatures(FEATURES_RAW);
+
+  } catch(e) {
+    console.error('[hub] loadAllData failed:', e);
+    showToast('Failed to load data: ' + e.message, 'error');
+  }
+  showLoadingOverlay(false);
+  renderDashboard();
+}
+
+function showLoadingOverlay(show) {
+  let el = document.getElementById('loading-overlay');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'loading-overlay';
+    el.style.cssText = `position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;
+      justify-content:center;z-index:9999;font-family:var(--font-ui);color:var(--accent);
+      font-size:11px;letter-spacing:3px;`;
+    el.innerHTML = '<div>LOADING HUB DATA...</div>';
+    document.body.appendChild(el);
+  }
+  el.style.display = show ? 'flex' : 'none';
+}
+
+function showToast(msg, type='info') {
+  const t = document.createElement('div');
+  const col = type === 'error' ? 'var(--red)' : type === 'success' ? 'var(--green)' : 'var(--accent)';
+  t.style.cssText = `position:fixed;bottom:24px;right:24px;background:var(--card);border:1px solid ${col};
+    color:var(--txt1);padding:10px 16px;font-family:var(--font-ui);font-size:10px;letter-spacing:1px;
+    z-index:9999;border-radius:2px;`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+// ── SUPABASE WRITE HELPERS ───────────────────────────────
+
+async function dbUpdateBug(id, changes) {
+  const { error } = await supa.from('hub_bugs').update({
+    severity: changes.severity,
+    title: changes.title,
+    file: changes.file,
+    description: changes.desc,
+    fix: changes.fix,
+    status: changes.status,
+    updated_at: new Date().toISOString()
+  }).eq('id', id);
+  if (error) { showToast('Save failed: ' + error.message, 'error'); return false; }
+  showToast('Bug updated', 'success');
+  return true;
+}
+
+async function dbAddBug(data) {
+  const { data: row, error } = await supa.from('hub_bugs').insert({
+    severity: data.severity, title: data.title,
+    file: data.file, description: data.desc, fix: data.fix, status: data.status
+  }).select().single();
+  if (error) { showToast('Add failed: ' + error.message, 'error'); return null; }
+  showToast('Bug added', 'success');
+  return row;
+}
+
+async function dbDeleteBug(id) {
+  const { error } = await supa.from('hub_bugs').delete().eq('id', id);
+  if (error) { showToast('Delete failed: ' + error.message, 'error'); return false; }
+  showToast('Bug deleted', 'success');
+  return true;
+}
+
+async function dbToggleTask(id, done) {
+  const { error } = await supa.from('hub_tasks').update({ done, updated_at: new Date().toISOString() }).eq('id', id);
+  if (error) { showToast('Save failed: ' + error.message, 'error'); return false; }
+  return true;
+}
+
+async function dbUpdateTask(id, changes) {
+  const { error } = await supa.from('hub_tasks').update({
+    title: changes.title, file: changes.file,
+    description: changes.desc, sprint: parseInt(changes.sprint),
+    updated_at: new Date().toISOString()
+  }).eq('id', id);
+  if (error) { showToast('Save failed: ' + error.message, 'error'); return false; }
+  showToast('Task updated', 'success');
+  return true;
+}
+
+async function dbAddTask(data) {
+  const { data: row, error } = await supa.from('hub_tasks').insert({
+    sprint: parseInt(data.sprint),
+    sprint_label: data.sprintLabel, sprint_color: data.sprintColor,
+    sprint_title: data.sprintTitle, sprint_sub: data.sprintSub,
+    title: data.title, file: data.file, description: data.desc, done: false
+  }).select().single();
+  if (error) { showToast('Add failed: ' + error.message, 'error'); return null; }
+  showToast('Task added', 'success');
+  return row;
+}
+
+async function dbDeleteTask(id) {
+  const { error } = await supa.from('hub_tasks').delete().eq('id', id);
+  if (error) { showToast('Delete failed: ' + error.message, 'error'); return false; }
+  showToast('Task deleted', 'success');
+  return true;
+}
+
+async function dbUpdateFeature(id, changes) {
+  const { error } = await supa.from('hub_features').update({
+    status: changes.status, note: changes.note,
+    updated_at: new Date().toISOString()
+  }).eq('id', id);
+  if (error) { showToast('Save failed: ' + error.message, 'error'); return false; }
+  showToast('Feature updated', 'success');
+  return true;
+}
+
+// ══════════════════════════════════════════════════════════
+// INIT — called after login
+// ══════════════════════════════════════════════════════════
+// renderDashboard() is called inside loadAllData() after data arrives
+</script>
+
+<!-- SUPABASE AUTH -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+const SUPA_URL = 'https://hmrnwvahkcoexjcxohel.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhtcm53dmFoa2NvZXhqY3hvaGVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI2MDE1MTcsImV4cCI6MjA4ODE3NzUxN30.yOdCdiIIxIfZ1_y7X3mExKxJzqcCxspPHOkAiMOqzUs';
+const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+let isRegisterMode = false;
+
+function toggleRegister() {
+  isRegisterMode = !isRegisterMode;
+  document.getElementById('lg-submit').textContent = isRegisterMode ? 'CREATE ACCOUNT' : 'SIGN IN';
+  document.querySelector('.lg-switch').textContent = isRegisterMode ? 'Sign in instead' : 'Register';
+  document.querySelector('.lg-footer').childNodes[0].textContent = isRegisterMode ? 'Already have an account? ' : "Don't have an account? ";
+  document.getElementById('lg-err').classList.remove('show');
+}
+
+async function loginSubmit() {
+  const email = document.getElementById('lg-email').value.trim();
+  const password = document.getElementById('lg-password').value;
+  const btn = document.getElementById('lg-submit');
+  const err = document.getElementById('lg-err');
+
+  if(!email || !password) { showErr('Email and password required'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="lg-spinner"></span>' + (isRegisterMode ? 'CREATING...' : 'SIGNING IN...');
+  err.classList.remove('show');
+
+  try {
+    let result;
+    if(isRegisterMode) {
+      result = await supa.auth.signUp({ email, password });
+    } else {
+      result = await supa.auth.signInWithPassword({ email, password });
+    }
+
+    if(result.error) {
+      showErr(result.error.message);
+      btn.disabled = false;
+      btn.textContent = isRegisterMode ? 'CREATE ACCOUNT' : 'SIGN IN';
+      return;
+    }
+
+    if(isRegisterMode && !result.data.session) {
+      showErr('Check your email to confirm your account, then sign in.');
+      btn.disabled = false;
+      btn.textContent = 'SIGN IN';
+      isRegisterMode = false;
+      return;
+    }
+
+    // Success
+    unlockApp(result.data.user);
+
+  } catch(e) {
+    showErr('Connection error — check your network');
+    btn.disabled = false;
+    btn.textContent = isRegisterMode ? 'CREATE ACCOUNT' : 'SIGN IN';
+  }
+}
+
+function showErr(msg) {
+  const err = document.getElementById('lg-err');
+  err.textContent = msg;
+  err.classList.add('show');
+}
+
+function unlockApp(user) {
+  document.getElementById('login-gate').classList.add('hidden');
+  document.getElementById('app').style.display = 'flex';
+  // Show user email in sidebar footer
+  const footer = document.querySelector('#sidebar > div:last-child');
+  const emailEl = document.createElement('div');
+  emailEl.style.cssText = 'font-size:9px;color:var(--txt3);margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+  emailEl.textContent = '⬤ ' + user.email;
+  footer.insertBefore(emailEl, footer.firstChild);
+  // Add sign out
+  const signOutBtn = document.createElement('button');
+  signOutBtn.textContent = 'SIGN OUT';
+  signOutBtn.style.cssText = 'background:none;border:1px solid var(--border);color:var(--txt3);font-family:var(--font-ui);font-size:8px;padding:3px 8px;cursor:pointer;border-radius:2px;letter-spacing:1px;margin-top:4px;width:100%';
+  signOutBtn.onclick = signOut;
+  footer.appendChild(signOutBtn);
+  // Load all data from Supabase
+  loadAllData();
+}
+
+async function signOut() {
+  await supa.auth.signOut();
+  document.getElementById('login-gate').classList.remove('hidden');
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('lg-email').value = '';
+  document.getElementById('lg-password').value = '';
+  document.getElementById('lg-submit').disabled = false;
+  document.getElementById('lg-submit').textContent = 'SIGN IN';
+}
+
+// Check for existing session on load
+(async () => {
+  const { data } = await supa.auth.getSession();
+  if(data.session) {
+    unlockApp(data.session.user);
+  }
+})();
+
+// Enter key support
+document.getElementById('lg-password').addEventListener('keydown', e => {
+  if(e.key === 'Enter') loginSubmit();
+});
+document.getElementById('lg-email').addEventListener('keydown', e => {
+  if(e.key === 'Enter') document.getElementById('lg-password').focus();
+});
+</script>
+</body>
+</html><!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SULLY.AI — Project Hub</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap');
+
+/* ── LOGIN GATE ── */
+#login-gate{position:fixed;inset:0;background:var(--bg);z-index:2000;display:flex;align-items:center;justify-content:center;flex-direction:column}
+#login-gate.hidden{display:none}
+.lg-box{width:360px;background:var(--panel);border:1px solid var(--border2);border-radius:4px;overflow:hidden}
+.lg-header{padding:24px 24px 16px;border-bottom:1px solid var(--border)}
+.lg-logo{font-family:var(--font-display);font-size:20px;font-weight:800;color:var(--accent);letter-spacing:3px}
+.lg-sub{font-size:9px;color:var(--txt3);letter-spacing:2px;margin-top:4px}
+.lg-body{padding:20px 24px;display:flex;flex-direction:column;gap:14px}
+.lg-field{display:flex;flex-direction:column;gap:5px}
+.lg-label{font-size:9px;color:var(--txt3);letter-spacing:2px}
+.lg-input{background:var(--panel2);border:1px solid var(--border);color:var(--white);font-family:var(--font-ui);font-size:11px;padding:8px 12px;outline:none;border-radius:2px;width:100%;transition:border-color .1s}
+.lg-input:focus{border-color:var(--accent3)}
+.lg-input::placeholder{color:var(--txt3)}
+.lg-btn{background:var(--accent);border:none;color:var(--bg);font-family:var(--font-ui);font-size:10px;font-weight:700;padding:10px;cursor:pointer;border-radius:2px;letter-spacing:2px;width:100%;transition:background .1s}
+.lg-btn:hover{background:#00e0ff}
+.lg-btn:disabled{background:var(--accent3);color:var(--txt3);cursor:not-allowed}
+.lg-err{font-size:10px;color:var(--red);padding:6px 10px;background:var(--red2);border-radius:2px;display:none}
+.lg-err.show{display:block}
+.lg-footer{padding:12px 24px;border-top:1px solid var(--border);font-size:9px;color:var(--txt3);text-align:center}
+.lg-switch{color:var(--accent);cursor:pointer;text-decoration:underline}
+.lg-spinner{display:inline-block;width:12px;height:12px;border:2px solid var(--bg);border-top-color:transparent;border-radius:50%;animation:spin .6s linear infinite;margin-right:6px;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090c;--panel:#0b0f14;--panel2:#0f1419;--border:#161e28;--border2:#1e2d3d;
+  --accent:#00c8f0;--accent2:#00c8f018;--accent3:#00c8f040;
+  --green:#00e87a;--green2:#00e87a18;
+  --red:#ff3548;--red2:#ff354818;
+  --amber:#ffb020;--amber2:#ffb02018;
+  --purple:#a855f7;--purple2:#a855f718;
+  --blue:#3b82f6;--blue2:#3b82f618;
+  --txt:#b8ccd8;--txt2:#6888a0;--txt3:#3a5060;--white:#eef6ff;
+  --font-ui:'Space Mono',monospace;
+  --font-display:'Syne',sans-serif;
+}
+
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font-family:var(--font-ui);font-size:12px}
+
+/* ── LAYOUT ── */
+#app{display:flex;height:100vh;overflow:hidden}
+#sidebar{width:220px;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+#topbar{height:48px;background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:12px;flex-shrink:0}
+#content{flex:1;overflow:hidden;display:flex;flex-direction:column}
+
+/* ── SIDEBAR ── */
+.sb-header{padding:16px 14px 10px;border-bottom:1px solid var(--border)}
+.sb-logo{font-family:var(--font-display);font-size:16px;font-weight:800;color:var(--accent);letter-spacing:2px}
+.sb-sub{font-size:9px;color:var(--txt3);letter-spacing:2px;margin-top:2px}
+.sb-section{padding:8px 0 4px 14px;font-size:8px;color:var(--txt3);letter-spacing:2px}
+.sb-item{display:flex;align-items:center;gap:8px;padding:7px 14px;cursor:pointer;border-left:2px solid transparent;transition:all .1s}
+.sb-item:hover{background:var(--accent2);color:var(--white)}
+.sb-item.active{background:var(--accent2);border-left-color:var(--accent);color:var(--white)}
+.sb-item .sb-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.sb-item .sb-label{font-size:10px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-item .sb-count{font-size:9px;color:var(--txt3);background:var(--border);padding:1px 5px;border-radius:2px}
+.sb-item.active .sb-count{background:var(--accent3);color:var(--accent)}
+
+/* ── TOPBAR ── */
+.tb-title{font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--white)}
+.tb-spacer{flex:1}
+#search-box{background:var(--panel2);border:1px solid var(--border);color:var(--txt);font-family:var(--font-ui);font-size:10px;padding:5px 10px;outline:none;width:220px;border-radius:2px}
+#search-box:focus{border-color:var(--accent3)}
+#search-box::placeholder{color:var(--txt3)}
+.tb-btn{background:var(--accent3);border:1px solid var(--accent);color:var(--accent);font-family:var(--font-ui);font-size:9px;padding:5px 12px;cursor:pointer;letter-spacing:1px;border-radius:2px;transition:all .1s}
+.tb-btn:hover{background:var(--accent);color:var(--bg)}
+
+/* ── VIEWS ── */
+.view{display:none;flex:1;overflow:hidden;flex-direction:column}
+.view.active{display:flex}
+
+/* ── DASHBOARD ── */
+#dash-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);flex-shrink:0}
+.stat-card{background:var(--panel);padding:16px;display:flex;flex-direction:column;gap:4px}
+.stat-card .sc-val{font-family:var(--font-display);font-size:28px;font-weight:800;line-height:1}
+.stat-card .sc-label{font-size:9px;color:var(--txt3);letter-spacing:2px}
+.stat-card .sc-sub{font-size:10px;color:var(--txt2);margin-top:2px}
+#dash-body{flex:1;overflow:auto;display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border)}
+.dash-panel{background:var(--panel);overflow:auto;padding:14px}
+.dash-panel h3{font-family:var(--font-display);font-size:11px;font-weight:700;color:var(--txt2);letter-spacing:2px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+
+/* ── BUG ROW ── */
+.bug-row{display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);cursor:pointer}
+.bug-row:last-child{border-bottom:none}
+.bug-row:hover{background:var(--panel2);margin:0 -14px;padding:7px 14px}
+.severity{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.sev-critical{background:var(--red)}
+.sev-significant{background:var(--amber)}
+.sev-minor{background:var(--txt2)}
+.bug-title{font-size:10px;color:var(--white);line-height:1.4;flex:1}
+.bug-file{font-size:9px;color:var(--txt3);font-family:var(--font-ui);margin-top:2px}
+
+/* ── FEATURE ROW ── */
+.feat-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)}
+.feat-row:last-child{border-bottom:none}
+.feat-status{font-size:8px;padding:2px 6px;border-radius:2px;letter-spacing:1px;flex-shrink:0;min-width:64px;text-align:center}
+.fs-working{background:var(--green2);color:var(--green)}
+.fs-broken{background:var(--red2);color:var(--red)}
+.fs-partial{background:var(--amber2);color:var(--amber)}
+.fs-planned{background:var(--blue2);color:var(--blue)}
+.fs-retired{background:var(--border);color:var(--txt3)}
+.feat-name{font-size:10px;color:var(--txt);flex:1}
+.feat-note{font-size:9px;color:var(--txt3);text-align:right;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ── ROADMAP ── */
+#roadmap-body{flex:1;overflow:auto;padding:14px}
+.sprint{margin-bottom:20px}
+.sprint-header{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.sprint-tag{font-size:8px;padding:2px 8px;border-radius:2px;letter-spacing:1.5px;font-weight:700}
+.sprint-title{font-family:var(--font-display);font-size:13px;font-weight:700;color:var(--white)}
+.sprint-sub{font-size:9px;color:var(--txt3);font-style:italic}
+.task-item{display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border:1px solid var(--border);border-radius:3px;margin-bottom:6px;cursor:pointer;transition:all .1s}
+.task-item:hover{border-color:var(--border2);background:var(--panel2)}
+.task-item.done{opacity:.4}
+.task-check{width:14px;height:14px;border:1px solid var(--border2);border-radius:2px;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--green)}
+.task-check.checked{background:var(--green2);border-color:var(--green);color:var(--green)}
+.task-title{font-size:10px;color:var(--white);flex:1;line-height:1.4}
+.task-file{font-size:9px;color:var(--accent);font-family:var(--font-ui);margin-top:2px}
+.task-desc{font-size:9px;color:var(--txt3);margin-top:3px;line-height:1.5}
+
+/* ── BUGS VIEW ── */
+#bugs-body{flex:1;overflow:auto}
+.bug-card{border-bottom:1px solid var(--border);padding:12px 16px;cursor:pointer;transition:background .1s}
+.bug-card:hover{background:var(--panel2)}
+.bug-card.expanded{background:var(--panel2)}
+.bc-header{display:flex;align-items:center;gap:8px}
+.bc-num{font-size:9px;color:var(--txt3);width:24px;flex-shrink:0}
+.bc-sev{font-size:8px;padding:2px 7px;border-radius:2px;letter-spacing:1px;flex-shrink:0}
+.bc-sev.critical{background:var(--red2);color:var(--red)}
+.bc-sev.significant{background:var(--amber2);color:var(--amber)}
+.bc-sev.minor{background:var(--border);color:var(--txt2)}
+.bc-title{font-size:11px;color:var(--white);flex:1}
+.bc-status{font-size:8px;padding:2px 7px;border-radius:2px;letter-spacing:1px}
+.bc-status.open{background:var(--red2);color:var(--red)}
+.bc-status.fixed{background:var(--green2);color:var(--green)}
+.bc-status.wontfix{background:var(--border);color:var(--txt3)}
+.bc-body{margin-top:10px;padding-left:32px;display:none}
+.bc-body.show{display:block}
+.bc-file{font-size:9px;color:var(--accent);font-family:var(--font-ui);margin-bottom:4px}
+.bc-desc{font-size:10px;color:var(--txt2);line-height:1.6;margin-bottom:6px}
+.bc-fix-label{font-size:8px;color:var(--green);letter-spacing:1px;margin-bottom:3px}
+.bc-actions{display:flex;gap:6px;margin-top:8px}
+.bc-btn{font-size:8px;padding:3px 10px;border-radius:2px;cursor:pointer;font-family:var(--font-ui);letter-spacing:1px;border:none;transition:all .1s}
+
+/* ── FEATURES VIEW ── */
+#features-body{flex:1;overflow:auto}
+.feat-group{border-bottom:1px solid var(--border)}
+.feat-group-header{padding:10px 16px;display:flex;align-items:center;gap:8px;cursor:pointer;background:var(--panel)}
+.feat-group-header:hover{background:var(--panel2)}
+.fgh-title{font-family:var(--font-display);font-size:11px;font-weight:700;color:var(--white);flex:1}
+.fgh-stats{display:flex;gap:6px}
+.fgh-pill{font-size:8px;padding:2px 6px;border-radius:2px}
+.feat-group-body{display:none;padding:0 16px 8px}
+.feat-group-body.open{display:block}
+.feat-item{display:flex;align-items:flex-start;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)}
+.feat-item:last-child{border-bottom:none}
+.fi-status{font-size:8px;padding:2px 7px;border-radius:2px;letter-spacing:1px;flex-shrink:0;min-width:60px;text-align:center;margin-top:1px}
+.fi-name{font-size:10px;color:var(--white);flex:1}
+.fi-note{font-size:9px;color:var(--txt3);margin-top:2px}
+.fi-actions{display:flex;gap:4px;flex-shrink:0}
+.fi-btn{font-size:8px;padding:2px 7px;background:var(--border);border:none;color:var(--txt2);cursor:pointer;font-family:var(--font-ui);border-radius:2px}
+.fi-btn:hover{background:var(--border2);color:var(--white)}
+
+/* ── CHANGELOG ── */
+#changelog-body{flex:1;overflow:auto;padding:14px 16px}
+.cl-entry{margin-bottom:20px}
+.cl-version{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.cl-ver-tag{font-family:var(--font-display);font-size:13px;font-weight:800;color:var(--accent)}
+.cl-ver-date{font-size:9px;color:var(--txt3)}
+.cl-ver-label{font-size:9px;color:var(--txt2);font-style:italic}
+.cl-section{margin-bottom:8px}
+.cl-section-title{font-size:8px;color:var(--txt3);letter-spacing:2px;margin-bottom:4px}
+.cl-item{font-size:10px;color:var(--txt);padding:3px 0 3px 12px;border-left:2px solid var(--border);line-height:1.5}
+.cl-item.added{border-left-color:var(--green)}
+.cl-item.changed{border-left-color:var(--amber)}
+.cl-item.fixed{border-left-color:var(--accent)}
+.cl-item.deleted{border-left-color:var(--red)}
+
+/* ── EDITOR MODAL ── */
+#modal-overlay{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:1000}
+#modal-overlay.show{display:flex}
+#modal{background:var(--panel);border:1px solid var(--border2);width:600px;max-height:80vh;display:flex;flex-direction:column;border-radius:4px;overflow:hidden}
+#modal-header{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+#modal-title{font-family:var(--font-display);font-size:13px;font-weight:700;color:var(--white);flex:1}
+#modal-close{background:none;border:none;color:var(--txt3);cursor:pointer;font-size:14px;padding:0 4px}
+#modal-close:hover{color:var(--white)}
+#modal-body{flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-label{font-size:9px;color:var(--txt3);letter-spacing:2px}
+.form-input,.form-select,.form-textarea{background:var(--panel2);border:1px solid var(--border);color:var(--white);font-family:var(--font-ui);font-size:11px;padding:7px 10px;outline:none;border-radius:2px;width:100%}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--accent3)}
+.form-textarea{resize:vertical;min-height:80px;line-height:1.5}
+.form-select option{background:var(--panel2)}
+#modal-footer{padding:12px 16px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+.modal-btn{font-size:9px;padding:6px 16px;border-radius:2px;cursor:pointer;font-family:var(--font-ui);letter-spacing:1px;border:none;transition:all .1s}
+.modal-btn.cancel{background:var(--border);color:var(--txt2)}
+.modal-btn.cancel:hover{background:var(--border2);color:var(--white)}
+.modal-btn.save{background:var(--accent);color:var(--bg)}
+.modal-btn.save:hover{background:#00e0ff}
+.modal-btn.danger{background:var(--red2);color:var(--red);border:1px solid var(--red)}
+.modal-btn.danger:hover{background:var(--red);color:var(--white)}
+
+/* ── FILTER BAR ── */
+.filter-bar{display:flex;gap:6px;padding:8px 16px;border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;align-items:center}
+.filter-btn{font-size:8px;padding:3px 10px;border-radius:2px;cursor:pointer;font-family:var(--font-ui);letter-spacing:1px;border:1px solid var(--border);background:transparent;color:var(--txt3);transition:all .1s}
+.filter-btn:hover{border-color:var(--border2);color:var(--txt)}
+.filter-btn.active{background:var(--accent2);border-color:var(--accent);color:var(--accent)}
+.filter-spacer{flex:1}
+.filter-count{font-size:9px;color:var(--txt3)}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:20px;right:20px;background:var(--panel);border:1px solid var(--accent3);color:var(--accent);font-size:10px;padding:8px 14px;border-radius:3px;z-index:9999;opacity:0;transition:opacity .2s;pointer-events:none}
+#toast.show{opacity:1}
+
+/* ── DOCS VIEW ── */
+#docs-grid{flex:1;overflow:auto;display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);align-content:start}
+.doc-card{background:var(--panel);padding:14px;cursor:pointer;transition:background .1s;display:flex;flex-direction:column;gap:6px}
+.doc-card:hover{background:var(--panel2)}
+.dc-tag{font-size:8px;padding:2px 7px;border-radius:2px;letter-spacing:1px;width:fit-content}
+.dc-title{font-family:var(--font-display);font-size:12px;font-weight:700;color:var(--white)}
+.dc-desc{font-size:9px;color:var(--txt3);line-height:1.5}
+.dc-meta{font-size:9px;color:var(--txt3)}
+
+/* ── DOC READER ── */
+#doc-reader{position:fixed;inset:0;background:var(--panel);z-index:500;display:none;flex-direction:column}
+#doc-reader.show{display:flex}
+#dr-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0}
+#dr-back{background:none;border:1px solid var(--border);color:var(--txt2);font-family:var(--font-ui);font-size:9px;padding:4px 12px;cursor:pointer;letter-spacing:1px;border-radius:2px}
+#dr-back:hover{border-color:var(--border2);color:var(--white)}
+#dr-title{font-family:var(--font-display);font-size:14px;font-weight:800;color:var(--white);flex:1}
+#dr-body{flex:1;overflow:auto;padding:20px 40px;max-width:860px;margin:0 auto;width:100%}
+#dr-body h1{font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--accent);margin-bottom:8px;margin-top:24px}
+#dr-body h2{font-family:var(--font-display);font-size:15px;font-weight:700;color:var(--white);margin-bottom:6px;margin-top:18px;border-bottom:1px solid var(--border);padding-bottom:4px}
+#dr-body h3{font-size:12px;font-weight:700;color:var(--txt2);margin-bottom:4px;margin-top:12px;letter-spacing:1px}
+#dr-body p{font-size:11px;color:var(--txt);line-height:1.7;margin-bottom:8px}
+#dr-body pre,#dr-body code{font-family:var(--font-ui);font-size:10px;background:var(--panel2);border:1px solid var(--border);padding:10px 14px;border-radius:3px;overflow-x:auto;color:var(--accent);display:block;margin-bottom:8px;white-space:pre-wrap}
+#dr-body li{font-size:11px;color:var(--txt);line-height:1.7;margin-left:20px;list-style:disc}
+#dr-body ul,#dr-body ol{margin-bottom:8px}
+#dr-body table{width:100%;border-collapse:collapse;margin-bottom:12px;font-size:10px}
+#dr-body th{background:var(--panel2);color:var(--txt2);padding:6px 10px;text-align:left;border:1px solid var(--border);font-size:9px;letter-spacing:1px}
+#dr-body td{padding:6px 10px;border:1px solid var(--border);color:var(--txt);vertical-align:top}
+#dr-body tr:nth-child(even) td{background:var(--panel2)}
+#dr-body blockquote{border-left:3px solid var(--accent);padding:6px 12px;background:var(--accent2);margin-bottom:8px;font-style:italic;color:var(--txt2)}
+#dr-body a{color:var(--accent);text-decoration:none}
+#dr-body hr{border:none;border-bottom:1px solid var(--border);margin:16px 0}
+
+/* ── BRAINSTORM ── */
+#view-brainstorm { background: var(--bg); }
+#bs-canvas { display:block; width:100%; height:100%; cursor:grab; }
+#bs-canvas.grabbing { cursor:grabbing; }
+#bs-canvas.connecting { cursor:crosshair; }
+.bs-btn { background:var(--panel2); border:1px solid var(--border2); color:var(--txt); font-family:var(--font-ui); font-size:9px; padding:5px 10px; cursor:pointer; border-radius:2px; letter-spacing:1px; transition:all .1s; }
+.bs-btn:hover { border-color:var(--accent3); color:var(--white); }
+.bs-btn-purple { border-color:var(--purple); color:var(--purple); }
+.bs-btn-purple.active { background:var(--purple); color:var(--bg); }
+#bs-node-menu { position:fixed; z-index:9000; background:var(--panel); border:1px solid var(--border2); border-radius:4px; padding:4px 0; min-width:160px; box-shadow:0 8px 32px #000a; }
+#bs-node-menu button { display:block; width:100%; text-align:left; padding:7px 14px; background:none; border:none; color:var(--txt); font-family:var(--font-ui); font-size:10px; cursor:pointer; letter-spacing:1px; }
+#bs-node-menu button:hover { background:var(--accent2); color:var(--white); }
+#bs-node-menu .menu-sep { height:1px; background:var(--border); margin:3px 0; }
+#bs-node-editor { position:fixed; z-index:9001; background:var(--panel); border:1px solid var(--border2); border-radius:4px; padding:18px; width:340px; box-shadow:0 8px 32px #000a; }
+#bs-node-editor h4 { font-family:var(--font-display); font-size:12px; color:var(--accent); margin-bottom:12px; letter-spacing:2px; }
+#bs-node-editor label { font-size:9px; color:var(--txt3); letter-spacing:1px; display:block; margin-bottom:3px; margin-top:8px; }
+#bs-node-editor input, #bs-node-editor textarea, #bs-node-editor select { width:100%; background:var(--panel2); border:1px solid var(--border2); color:var(--white); font-family:var(--font-ui); font-size:10px; padding:6px 8px; border-radius:2px; outline:none; }
+#bs-node-editor textarea { min-height:60px; resize:vertical; }
+#bs-node-editor .ed-row { display:flex; gap:6px; margin-top:12px; }
+#bs-node-editor .ed-btn { flex:1; padding:7px; background:var(--accent); border:none; color:var(--bg); font-family:var(--font-ui); font-size:9px; font-weight:700; cursor:pointer; border-radius:2px; letter-spacing:1px; }
+#bs-node-editor .ed-btn.cancel { background:var(--panel2); border:1px solid var(--border2); color:var(--txt); }
+
+</style>
+</head>
+<body>
+
+<!-- LOGIN GATE -->
+<div id="login-gate">
+  <div class="lg-box">
+    <div class="lg-header">
+      <div class="lg-logo">SULLY.AI</div>
+      <div class="lg-sub">PROJECT HUB · INTERNAL</div>
+    </div>
+    <div class="lg-body">
+      <div class="lg-err" id="lg-err"></div>
+      <div class="lg-field">
+        <label class="lg-label">EMAIL</label>
+        <input class="lg-input" id="lg-email" type="email" placeholder="your@email.com" autocomplete="email">
+      </div>
+      <div class="lg-field">
+        <label class="lg-label">PASSWORD</label>
+        <input class="lg-input" id="lg-password" type="password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="lg-btn" id="lg-submit" onclick="loginSubmit()">SIGN IN</button>
+    </div>
+    <div class="lg-footer">
+      Don't have an account? <span class="lg-switch" onclick="toggleRegister()">Register</span>
+    </div>
+  </div>
+  <div style="margin-top:16px;font-size:9px;color:var(--txt3)">Sully AI · Internal Tool · Not for distribution</div>
+</div>
+
+<div id="app" style="display:none">
+
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div class="sb-header">
+      <div class="sb-logo">SULLY.AI</div>
+      <div class="sb-sub">PROJECT HUB</div>
+    </div>
+    <div style="overflow-y:auto;flex:1">
+      <div class="sb-section">OVERVIEW</div>
+      <div class="sb-item active" onclick="nav('dashboard')">
+        <div class="sb-dot" style="background:var(--accent)"></div>
+        <span class="sb-label">Dashboard</span>
+      </div>
+      <div class="sb-item" onclick="nav('docs')">
+        <div class="sb-dot" style="background:var(--txt2)"></div>
+        <span class="sb-label">All Documents</span>
+        <span class="sb-count">15</span>
+      </div>
+
+      <div class="sb-section">WORK ITEMS</div>
+      <div class="sb-item" onclick="nav('bugs')">
+        <div class="sb-dot" style="background:var(--red)"></div>
+        <span class="sb-label">Known Bugs</span>
+        <span class="sb-count" id="sb-bug-count">12</span>
+      </div>
+      <div class="sb-item" onclick="nav('features')">
+        <div class="sb-dot" style="background:var(--green)"></div>
+        <span class="sb-label">Feature Status</span>
+        <span class="sb-count">52</span>
+      </div>
+      <div class="sb-item" onclick="nav('roadmap')">
+        <div class="sb-dot" style="background:var(--amber)"></div>
+        <span class="sb-label">Roadmap</span>
+        <span class="sb-count" id="sb-task-count">22</span>
+      </div>
+
+      <div class="sb-section">PROJECT</div>
+      <div class="sb-item" onclick="nav('changelog')">
+        <div class="sb-dot" style="background:var(--purple)"></div>
+        <span class="sb-label">Changelog</span>
+      </div>
+      <div class="sb-item" onclick="nav('decisions')">
+        <div class="sb-dot" style="background:var(--blue)"></div>
+        <span class="sb-label">Decisions</span>
+      </div>
+      <div class="sb-item" onclick="nav('cleanup')">
+        <div class="sb-dot" style="background:var(--red)"></div>
+        <span class="sb-label">Cleanup List</span>
+      </div>
+      <div class="sb-item" onclick="nav('brainstorm')">
+        <div class="sb-dot" style="background:var(--purple)"></div>
+        <span class="sb-label">Brainstorm</span>
+      </div>
+    </div>
+
+    <div style="padding:12px 14px;border-top:1px solid var(--border)">
+      <div style="font-size:9px;color:var(--txt3);margin-bottom:4px">v1.0.4 · March 2026</div>
+      <div style="display:flex;gap:4px">
+        <div style="flex:1;height:3px;background:var(--green);border-radius:2px" title="Working"></div>
+        <div style="width:30%;height:3px;background:var(--amber);border-radius:2px" title="Broken/Partial"></div>
+        <div style="width:20%;height:3px;background:var(--blue);border-radius:2px" title="Planned"></div>
+      </div>
+      <div style="font-size:8px;color:var(--txt3);margin-top:3px">~50% launch ready</div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div id="main">
+    <div id="topbar">
+      <div class="tb-title" id="tb-title">Dashboard</div>
+      <div class="tb-spacer"></div>
+      <input id="search-box" placeholder="Search everything..." oninput="globalSearch(this.value)">
+      <button class="tb-btn" onclick="openAddModal()">+ ADD ITEM</button>
+    </div>
+
+    <div id="content">
+
+      <!-- DASHBOARD -->
+      <div id="view-dashboard" class="view active">
+        <div id="dash-grid">
+          <div class="stat-card">
+            <div class="sc-val" style="color:var(--red)" id="stat-critical">2</div>
+            <div class="sc-label">CRITICAL BUGS</div>
+            <div class="sc-sub">Blocking launch</div>
+          </div>
+          <div class="stat-card">
+            <div class="sc-val" style="color:var(--amber)" id="stat-open">10</div>
+            <div class="sc-label">OPEN ISSUES</div>
+            <div class="sc-sub">Total known bugs</div>
+          </div>
+          <div class="stat-card">
+            <div class="sc-val" style="color:var(--green)" id="stat-working">28</div>
+            <div class="sc-label">FEATURES WORKING</div>
+            <div class="sc-sub">End-to-end</div>
+          </div>
+          <div class="stat-card">
+            <div class="sc-val" style="color:var(--accent)" id="stat-tasks">22</div>
+            <div class="sc-label">ROADMAP TASKS</div>
+            <div class="sc-sub" id="stat-tasks-done">0 done</div>
+          </div>
+        </div>
+        <div id="dash-body">
+          <div class="dash-panel">
+            <h3>🔴 CRITICAL BUGS</h3>
+            <div id="dash-critical-bugs"></div>
+          </div>
+          <div class="dash-panel">
+            <h3>🚨 SPRINT 1 — NEXT TASKS</h3>
+            <div id="dash-sprint1"></div>
+          </div>
+          <div class="dash-panel">
+            <h3>⚡ BROKEN FEATURES</h3>
+            <div id="dash-broken"></div>
+          </div>
+          <div class="dash-panel">
+            <h3>✅ RECENTLY WORKING</h3>
+            <div id="dash-working"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DOCS -->
+      <div id="view-docs" class="view">
+        <div id="docs-grid"></div>
+      </div>
+
+      <!-- BUGS -->
+      <div id="view-bugs" class="view">
+        <div class="filter-bar">
+          <button class="filter-btn active" onclick="filterBugs('all',this)">ALL</button>
+          <button class="filter-btn" onclick="filterBugs('critical',this)">🔴 CRITICAL</button>
+          <button class="filter-btn" onclick="filterBugs('significant',this)">🟡 SIGNIFICANT</button>
+          <button class="filter-btn" onclick="filterBugs('minor',this)">🟠 MINOR</button>
+          <button class="filter-btn" onclick="filterBugs('open',this)">OPEN</button>
+          <button class="filter-btn" onclick="filterBugs('fixed',this)">FIXED</button>
+          <div class="filter-spacer"></div>
+          <button class="tb-btn" onclick="openAddBug()">+ ADD BUG</button>
+        </div>
+        <div id="bugs-body"></div>
+      </div>
+
+      <!-- FEATURES -->
+      <div id="view-features" class="view">
+        <div class="filter-bar">
+          <button class="filter-btn active" onclick="filterFeats('all',this)">ALL</button>
+          <button class="filter-btn" onclick="filterFeats('working',this)">✅ WORKING</button>
+          <button class="filter-btn" onclick="filterFeats('broken',this)">❌ BROKEN</button>
+          <button class="filter-btn" onclick="filterFeats('partial',this)">⚠ PARTIAL</button>
+          <button class="filter-btn" onclick="filterFeats('planned',this)">🔲 PLANNED</button>
+          <button class="filter-btn" onclick="filterFeats('retired',this)">🗑 RETIRED</button>
+          <div class="filter-spacer"></div>
+          <span class="filter-count" id="feat-count">52 features</span>
+        </div>
+        <div id="features-body"></div>
+      </div>
+
+      <!-- ROADMAP -->
+      <div id="view-roadmap" class="view">
+        <div class="filter-bar">
+          <button class="filter-btn active" onclick="filterTasks('all',this)">ALL SPRINTS</button>
+          <button class="filter-btn" onclick="filterTasks('open',this)">OPEN</button>
+          <button class="filter-btn" onclick="filterTasks('done',this)">DONE</button>
+          <div class="filter-spacer"></div>
+          <span class="filter-count" id="task-count"></span>
+          <button class="tb-btn" onclick="openAddTask()">+ ADD TASK</button>
+        </div>
+        <div id="roadmap-body"></div>
+      </div>
+
+      <!-- CHANGELOG -->
+      <div id="view-changelog" class="view">
+        <div id="changelog-body"></div>
+      </div>
+
+      <!-- DECISIONS -->
+      <div id="view-decisions" class="view">
+        <div id="decisions-body" style="flex:1;overflow:auto;padding:14px 16px"></div>
+      </div>
+
+      <!-- CLEANUP -->
+      <div id="view-cleanup" class="view">
+        <div id="cleanup-body" style="flex:1;overflow:auto;padding:14px 16px"></div>
+      </div>
+
+      <div id="view-brainstorm" class="view" style="position:relative;overflow:hidden;padding:0">
+        <div id="bs-toolbar" style="position:absolute;top:12px;left:12px;z-index:100;display:flex;gap:6px;align-items:center">
+          <button class="bs-btn" onclick="bsAddNode()">+ NODE</button>
+          <button class="bs-btn" onclick="bsAddGroup()">+ GROUP</button>
+          <button class="bs-btn bs-btn-purple" onclick="bsToggleConnect()" id="bs-connect-btn">⟷ CONNECT</button>
+          <button class="bs-btn" onclick="bsClearCanvas()" style="color:var(--red)">CLEAR</button>
+          <span style="font-size:9px;color:var(--txt3);margin-left:8px" id="bs-status">Click canvas to pan · Drag nodes to move · Right-click node for options</span>
+        </div>
+        <canvas id="bs-canvas"></canvas>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- DOC READER -->
+<div id="doc-reader">
+  <div id="dr-header">
+    <button id="dr-back" onclick="closeDocReader()">← BACK</button>
+    <div id="dr-title"></div>
+  </div>
+  <div id="dr-body"></div>
+</div>
+
+<!-- MODAL -->
+<div id="modal-overlay">
+  <div id="modal">
+    <div id="modal-header">
+      <div id="modal-title">Add Item</div>
+      <button id="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modal-body"></div>
+    <div id="modal-footer">
+      <button class="modal-btn cancel" onclick="closeModal()">CANCEL</button>
+      <button class="modal-btn save" id="modal-save">SAVE</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+// DATA
+// ══════════════════════════════════════════════════════════
+
+const DOCS = [
+  {id:'readme',     tag:'OVERVIEW',    tagColor:'var(--accent)',  title:'README',               desc:'Project overview, setup instructions, feature list, AI backends, coaching modes.'},
+  {id:'architecture',tag:'TECHNICAL', tagColor:'var(--blue)',    title:'ARCHITECTURE',          desc:'Full data flow diagrams — UDP pipeline, AI pipeline, cloud/memory pipeline, UI structure.'},
+  {id:'feature_status',tag:'STATUS',  tagColor:'var(--green)',   title:'FEATURE STATUS',        desc:'Every feature with working/broken/planned status. 52 items across 8 categories.'},
+  {id:'known_bugs', tag:'BUGS',        tagColor:'var(--red)',    title:'KNOWN BUGS',            desc:'12 bugs with file + line references, severity, root cause, and fix instructions.'},
+  {id:'roadmap',    tag:'PLANNING',    tagColor:'var(--amber)',  title:'ROADMAP',               desc:'6 sprints prioritised. Sprint 1 critical fixes → launch polish. Future features.'},
+  {id:'changelog',  tag:'HISTORY',     tagColor:'var(--purple)', title:'CHANGELOG',             desc:'What changed in each version. v1.0.0 initial → v1.0.4 stage detection rebuild.'},
+  {id:'architecture2',tag:'DECISIONS',tagColor:'var(--blue)',   title:'DECISIONS',             desc:'Architectural decision records — the why behind UDP approach, AI backends, pricing.'},
+  {id:'dependencies',tag:'TECHNICAL', tagColor:'var(--blue)',   title:'DEPENDENCIES',          desc:'Full package inventory with usage context and install commands.'},
+  {id:'cleanup',    tag:'CLEANUP',     tagColor:'var(--red)',    title:'CLEANUP LIST',          desc:'~1000 lines of dead code. Safe to delete now vs needs checking vs refactor.'},
+  {id:'dead_code',  tag:'CLEANUP',     tagColor:'var(--red)',    title:'DEAD CODE',             desc:'Exact file and line confirmation of dead code. Methods, state vars, whole files.'},
+  {id:'file_tree',  tag:'TECHNICAL',   tagColor:'var(--blue)',  title:'FILE TREE',             desc:'Every file, what it does, what it connects to. Root, core/, engine/, ui/tabs/.'},
+  {id:'honest_review',tag:'REVIEW',   tagColor:'var(--amber)',  title:'HONEST REVIEW',         desc:'First-user perspective, no mercy. What would make them close it immediately vs what\'s good.'},
+  {id:'version_history',tag:'HISTORY',tagColor:'var(--purple)', title:'VERSION HISTORY',       desc:'Old monolithic project vs new modular architecture. Every structural change documented.'},
+  {id:'session_template',tag:'TEMPLATE',tagColor:'var(--txt2)', title:'SESSION BRIEF TEMPLATE',desc:'Fill in at the start of each dev session. Saves 20min of context reconstruction.'},
+  {id:'changelog_entry',tag:'TEMPLATE',tagColor:'var(--txt2)',  title:'CHANGELOG ENTRY',       desc:'Template for logging what changed at the end of each session.'},
+];
+
+const DOC_CONTENT = {
+  readme: `# SULLY.AI\n### AI Rally Coach for EA Sports WRC\n\nSully is a real-time AI coaching system that reads live telemetry from EA Sports WRC, records your runs, and gives you structured post-stage coaching from an AI that knows your history.\n\n## What It Does\n\n- Reads live telemetry via UDP from EA Sports WRC (custom packet, port 20778)\n- Records every run automatically to CSV with spatial downsampling\n- Identifies your stage exactly — Rally country + stage name via EA's own ID system\n- Debriefs you after every stage — 4-line structured coaching: worst sector, inconsistency, priority fix\n- Remembers your history — session count, form score, weaknesses, recurring mistakes via Supabase\n- Multiple coaching modes — Training, Race, Qualifying, Consistency, Setup, Rival, Mental Coach\n- Multiple AI backends — Gemini (fast/cloud), Claude (nuanced), Ollama (local/private)\n- Forensic telemetry tab — graph grid, GPS map with colour modes, sector analysis\n- WRC Academy — built-in knowledge base\n\n## AI Backends\n\n| Backend | Model | Best For |\n|---------|-------|----------|\n| Gemini | gemini-2.0-flash | Speed, daily use |\n| Claude | claude-haiku | Nuanced coaching |\n| Ollama | gemma3:latest | Privacy, offline |\n\n## Coaching Modes\n\n| Mode | Focus |\n|------|-------|\n| Training | Detailed technical breakdown |\n| Race | One fix, fast |\n| Qualifying | Single biggest time gain |\n| Consistency | Find the repeating mistake |\n| Setup | WRC-specific car setup changes |\n| Rival | vs personal best analysis |\n| Mental Coach | Psychological pattern analysis |`,
+  architecture: `# SULLY.AI — ARCHITECTURE\n\n## System Overview\n\n\`\`\`\nEA Sports WRC (game)\n        │\n        │ UDP packets (port 20778, custom1 structure)\n        ▼\n  UdpMonitor (engine/sully_engine.py)\n        │\n        ├─── status_signal(bool) ──────────────────► update_link_indicator()\n        ├─── live_data_signal(dict) ───────────────► update_live_tab()\n        └─── run_saved_signal(str) ────────────────► _on_run_saved(filepath)\n\`\`\`\n\n## Stage Detection\n\n\`\`\`\nUdpMonitor.run()\n    │\n    ├── parsed["LocationId"] → int\n    ├── parsed["RouteId"]    → int\n    ├── self._ids['locations'][loc_id]  → "RALLY CROATIA"\n    └── self._ids['routes'][route_id]   → "Montclar"\n\`\`\`\n\n## UDP Packet Structure (custom1, port 20778)\n\n| Offset | Field | Type | Notes |\n|--------|-------|------|-------|\n| 0 | PacketUid | ulong | |\n| 41 | Speed | float | m/s |\n| 197 | Throttle | float | 0-1 |\n| 201 | Brake | float | 0-1 |\n| 213 | Handbrake | float | 0-1 |\n| 221 | Distance | double | metres |\n| 256 | VehicleId | uint16 | |\n| 262 | LocationId | uint16 | Stage country |\n| 264 | RouteId | uint16 | Stage name |\n\n## AI Pipeline\n\n\`\`\`\nUser action (run loaded / send button / mode chip)\n        │\n        ▼\n  SullyWorker(QThread)\n        ├── _build_sys_prompt()    → mode-aware personality\n        ├── _build_memory_context() → session count, form, weaknesses\n        ├── GEMINI path  → genai.Client → generate_content()\n        ├── CLAUDE path  → anthropic.Anthropic → messages.create()\n        └── OLLAMA path  → ollama.Client → chat()\n\`\`\``,
+  feature_status: `# FEATURE STATUS\n\nSee the Feature Status view for the interactive table.\n\nLegend: ✅ Working | ⚠ Partial | ❌ Broken | 🔲 Planned | 🗑 Retired`,
+  known_bugs: `# KNOWN BUGS\n\nSee the Bugs view for the interactive bug tracker.\n\nTotal: 12 known issues across critical / significant / minor severity levels.`,
+  roadmap: `# ROADMAP\n\nSee the Roadmap view for the interactive sprint board.\n\n6 sprints defined:\n- Sprint 1: Fix before anything else (crash, fish brain, log spam)\n- Sprint 2: Stage name everywhere\n- Sprint 3: Live tab rebuild\n- Sprint 4: Logging & diagnostics\n- Sprint 5: Cleanup (~1000 dead lines)\n- Sprint 6: Pre-launch polish`,
+};
+
+// ── SUPABASE DATA (loaded on login) ──
+let BUGS = [];
+let FEATURES_RAW = []; // flat rows from DB
+let TASKS = [];
+// FEATURES stays as grouped array for render — rebuilt from FEATURES_RAW
+let FEATURES = [];
+
+let bugFilter = 'all';
+let featFilter = 'all';
+let taskFilter = 'all';
+let searchQuery = '';
+
+// ══════════════════════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════════════════════
+function nav(view) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.sb-item').forEach(i => i.classList.remove('active'));
+  document.getElementById('view-' + view).classList.add('active');
+  document.querySelector(`[onclick="nav('${view}')"]`).classList.add('active');
+  const titles = {dashboard:'Dashboard',docs:'All Documents',bugs:'Known Bugs',features:'Feature Status',roadmap:'Roadmap',changelog:'Changelog',decisions:'Decisions',cleanup:'Cleanup List',brainstorm:'Brainstorm'};
+  document.getElementById('tb-title').textContent = titles[view] || view;
+  if(view === 'bugs') renderBugs();
+  if(view === 'features') renderFeatures();
+  if(view === 'roadmap') renderRoadmap();
+  if(view === 'changelog') renderChangelog();
+  if(view === 'decisions') renderDecisions();
+  if(view === 'cleanup') renderCleanup();
+  if(view === 'brainstorm') bsInit();
+  if(view === 'docs') renderDocs();
+  if(view === 'dashboard') renderDashboard();
+}
+
+// ══════════════════════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════════════════════
+function renderDashboard() {
+  const critical = BUGS.filter(b => b.severity === 'critical' && b.status === 'open');
+  const done = TASKS.filter(t => t.done).length;
+  const working = FEATURES.flatMap(g => g.items).filter(f => f.status === 'working').length;
+  document.getElementById('stat-critical').textContent = critical.length;
+  document.getElementById('stat-open').textContent = BUGS.filter(b => b.status === 'open').length;
+  document.getElementById('stat-working').textContent = working;
+  document.getElementById('stat-tasks').textContent = TASKS.length;
+  document.getElementById('stat-tasks-done').textContent = done + ' done';
+  document.getElementById('sb-task-count').textContent = TASKS.length;
+
+  // Critical bugs
+  document.getElementById('dash-critical-bugs').innerHTML = critical.map(b => `
+    <div class="bug-row" onclick="nav('bugs')">
+      <div class="severity sev-critical"></div>
+      <div><div class="bug-title">${b.title}</div><div class="bug-file">${b.file}</div></div>
+    </div>`).join('');
+
+  // Sprint 1 tasks
+  const s1 = TASKS.filter(t => t.sprint === 1);
+  document.getElementById('dash-sprint1').innerHTML = s1.map(t => `
+    <div class="bug-row" onclick="nav('roadmap')">
+      <div class="task-check ${t.done?'checked':''}">
+        ${t.done?'✓':''}
+      </div>
+      <div><div class="bug-title">${t.title}</div><div class="bug-file">${t.file}</div></div>
+    </div>`).join('');
+
+  // Broken features
+  const broken = FEATURES.flatMap(g => g.items).filter(f => f.status === 'broken').slice(0, 6);
+  document.getElementById('dash-broken').innerHTML = broken.map(f => `
+    <div class="feat-row">
+      <div class="feat-status fs-broken">BROKEN</div>
+      <div class="feat-name">${f.name}</div>
+      ${f.note ? `<div class="feat-note">${f.note}</div>` : ''}
+    </div>`).join('');
+
+  // Working features (sample)
+  const wk = FEATURES.flatMap(g => g.items).filter(f => f.status === 'working').slice(0, 6);
+  document.getElementById('dash-working').innerHTML = wk.map(f => `
+    <div class="feat-row">
+      <div class="feat-status fs-working">WORKING</div>
+      <div class="feat-name">${f.name}</div>
+    </div>`).join('');
+}
+
+// ══════════════════════════════════════════════════════════
+// DOCS
+// ══════════════════════════════════════════════════════════
+function renderDocs() {
+  document.getElementById('docs-grid').innerHTML = DOCS.map(d => `
+    <div class="doc-card" onclick="openDoc('${d.id}')">
+      <div class="dc-tag" style="background:${d.tagColor}22;color:${d.tagColor}">${d.tag}</div>
+      <div class="dc-title">${d.title}</div>
+      <div class="dc-desc">${d.desc}</div>
+    </div>`).join('');
+}
+
+function openDoc(id) {
+  const doc = DOCS.find(d => d.id === id);
+  if(!doc) return;
+  document.getElementById('dr-title').textContent = doc.title;
+  const content = DOC_CONTENT[id] || `# ${doc.title}\n\n${doc.desc}\n\n*Full content available in the Project Debrief zip.*`;
+  document.getElementById('dr-body').innerHTML = renderMarkdown(content);
+  document.getElementById('doc-reader').classList.add('show');
+}
+
+function closeDocReader() {
+  document.getElementById('doc-reader').classList.remove('show');
+}
+
+function renderMarkdown(md) {
+  return md
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+    .replace(/^---$/gm, '<hr>')
+    .replace(/```[\w]*\n([\s\S]*?)```/gm, (m, code) => `<pre>${escHtml(code.trim())}</pre>`)
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/^\| (.+) \|$/gm, row => {
+      const cells = row.slice(2, -2).split(' | ');
+      return '<tr>' + cells.map(c => `<td>${c}</td>`).join('') + '</tr>';
+    })
+    .replace(/(<tr>.*<\/tr>\n)+/gm, match => `<table>${match.replace(/<tr><td>-+<\/td>.*<\/tr>\n/gm, '')}</table>`)
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>\n)+/gm, match => `<ul>${match}</ul>`)
+    .replace(/^\*\*(.+)\*\*$/gm, '<strong>$1</strong>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
+    .replace(/^([^<\n].+)$/gm, '<p>$1</p>')
+    .replace(/<p><\/p>/g, '');
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ══════════════════════════════════════════════════════════
+// BUGS
+// ══════════════════════════════════════════════════════════
+function renderBugs() {
+  let bugs = BUGS;
+  if(bugFilter === 'critical') bugs = bugs.filter(b => b.severity === 'critical');
+  else if(bugFilter === 'significant') bugs = bugs.filter(b => b.severity === 'significant');
+  else if(bugFilter === 'minor') bugs = bugs.filter(b => b.severity === 'minor');
+  else if(bugFilter === 'open') bugs = bugs.filter(b => b.status === 'open');
+  else if(bugFilter === 'fixed') bugs = bugs.filter(b => b.status === 'fixed');
+  if(searchQuery) bugs = bugs.filter(b => b.title.toLowerCase().includes(searchQuery) || b.desc.toLowerCase().includes(searchQuery));
+
+  document.getElementById('bugs-body').innerHTML = bugs.map(b => `
+    <div class="bug-card" id="bug-${b.id}" onclick="toggleBug(${b.id})">
+      <div class="bc-header">
+        <div class="bc-num">#${b.id}</div>
+        <div class="bc-sev ${b.severity}">${b.severity.toUpperCase()}</div>
+        <div class="bc-title">${b.title}</div>
+        <div class="bc-status ${b.status}">${b.status.toUpperCase()}</div>
+      </div>
+      <div class="bc-body" id="bc-body-${b.id}">
+        <div class="bc-file">${b.file}</div>
+        <div class="bc-desc">${b.desc}</div>
+        <div class="bc-fix-label">FIX →</div>
+        <div class="bc-desc" style="color:var(--txt)">${b.fix}</div>
+        <div class="bc-actions">
+          ${b.status === 'open' ? `<button class="bc-btn" style="background:var(--green2);color:var(--green)" onclick="markFixed(event,${b.id})">MARK FIXED</button>` : `<button class="bc-btn" style="background:var(--amber2);color:var(--amber)" onclick="markOpen(event,${b.id})">REOPEN</button>`}
+          <button class="bc-btn" style="background:var(--blue2);color:var(--blue)" onclick="editBug(event,${b.id})">EDIT</button>
+          <button class="bc-btn" style="background:var(--red2);color:var(--red)" onclick="deleteBug(event,${b.id})">DELETE</button>
+        </div>
+      </div>
+    </div>`).join('');
+  document.getElementById('sb-bug-count').textContent = BUGS.filter(b=>b.status==='open').length;
+}
+
+function toggleBug(id) {
+  const body = document.getElementById('bc-body-' + id);
+  const card = document.getElementById('bug-' + id);
+  const open = body.classList.toggle('show');
+  card.classList.toggle('expanded', open);
+}
+
+function filterBugs(f, btn) {
+  bugFilter = f;
+  document.querySelectorAll('#view-bugs .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderBugs();
+}
+
+async function markFixed(e, id) {
+  e.stopPropagation();
+  const b = BUGS.find(b => b.id === id);
+  if (!b) return;
+  b.status = 'fixed';
+  renderBugs(); renderDashboard();
+  await dbUpdateBug(id, b);
+}
+async function markOpen(e, id) {
+  e.stopPropagation();
+  const b = BUGS.find(b => b.id === id);
+  if (!b) return;
+  b.status = 'open';
+  renderBugs(); renderDashboard();
+  await dbUpdateBug(id, b);
+}
+
+async function deleteBug(e, id) {
+  e.stopPropagation();
+  if(!confirm('Delete bug #'+id+'?')) return;
+  const ok = await dbDeleteBug(id);
+  if (ok) {
+    BUGS = BUGS.filter(b => b.id !== id);
+    renderBugs(); renderDashboard();
+  }
+}
+
+function editBug(e, id) {
+  e.stopPropagation();
+  const b = BUGS.find(x => x.id === id);
+  openModal('Edit Bug', [
+    {label:'Title', key:'title', type:'input', val:b.title},
+    {label:'Severity', key:'severity', type:'select', options:['critical','significant','minor'], val:b.severity},
+    {label:'Status', key:'status', type:'select', options:['open','fixed','wontfix'], val:b.status},
+    {label:'File', key:'file', type:'input', val:b.file},
+    {label:'Description', key:'desc', type:'textarea', val:b.desc},
+    {label:'Fix', key:'fix', type:'textarea', val:b.fix},
+  ], async data => {
+    Object.assign(b, data);
+    renderBugs(); renderDashboard();
+    await dbUpdateBug(id, b);
+  });
+}
+
+function openAddBug() {
+  openModal('Add Bug', [
+    {label:'Title', key:'title', type:'input', val:''},
+    {label:'Severity', key:'severity', type:'select', options:['critical','significant','minor'], val:'minor'},
+    {label:'File', key:'file', type:'input', val:''},
+    {label:'Description', key:'desc', type:'textarea', val:''},
+    {label:'Fix', key:'fix', type:'textarea', val:''},
+  ], async data => {
+    const row = await dbAddBug({ ...data, status: 'open' });
+    if (row) {
+      BUGS.push({ id: row.id, severity: row.severity, title: row.title,
+        file: row.file || '', desc: row.description || '', fix: row.fix || '', status: row.status });
+      renderBugs(); renderDashboard();
+    }
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+// FEATURES
+// ══════════════════════════════════════════════════════════
+function renderFeatures() {
+  const statusMap = {working:'fs-working',broken:'fs-broken',partial:'fs-partial',planned:'fs-planned',retired:'fs-retired'};
+  const labelMap = {working:'WORKING',broken:'BROKEN',partial:'PARTIAL',planned:'PLANNED',retired:'RETIRED'};
+
+  let html = '';
+  FEATURES.forEach((group, gi) => {
+    let items = group.items;
+    if(featFilter !== 'all') items = items.filter(f => f.status === featFilter);
+    if(searchQuery) items = items.filter(f => f.name.toLowerCase().includes(searchQuery) || (f.note||'').toLowerCase().includes(searchQuery));
+    if(items.length === 0) return;
+
+    const counts = {working:0,broken:0,partial:0,planned:0,retired:0};
+    group.items.forEach(f => counts[f.status]++);
+
+    html += `<div class="feat-group">
+      <div class="feat-group-header" onclick="toggleGroup(${gi})">
+        <div class="fgh-title">${group.group}</div>
+        <div class="fgh-stats">
+          ${counts.working ? `<div class="fgh-pill" style="background:var(--green2);color:var(--green)">${counts.working} ✅</div>` : ''}
+          ${counts.broken ? `<div class="fgh-pill" style="background:var(--red2);color:var(--red)">${counts.broken} ❌</div>` : ''}
+          ${counts.partial ? `<div class="fgh-pill" style="background:var(--amber2);color:var(--amber)">${counts.partial} ⚠</div>` : ''}
+          ${counts.planned ? `<div class="fgh-pill" style="background:var(--blue2);color:var(--blue)">${counts.planned} 🔲</div>` : ''}
+        </div>
+      </div>
+      <div class="feat-group-body open" id="feat-group-${gi}">
+        ${items.map((f,fi) => `
+          <div class="feat-item">
+            <div class="fi-status ${statusMap[f.status]}">${labelMap[f.status]}</div>
+            <div style="flex:1">
+              <div class="fi-name">${f.name}</div>
+              ${f.note ? `<div class="fi-note">${f.note}</div>` : ''}
+            </div>
+            <div class="fi-actions">
+              <select class="fi-btn" style="width:80px" onchange="changeFeatureStatus(${gi},${fi},this.value)">
+                ${['working','broken','partial','planned','retired'].map(s=>`<option value="${s}" ${f.status===s?'selected':''}>${labelMap[s]}</option>`).join('')}
+              </select>
+              <button class="fi-btn" onclick="editFeature(${gi},${fi})">EDIT</button>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  });
+  document.getElementById('features-body').innerHTML = html;
+  const total = FEATURES.flatMap(g=>g.items).length;
+  const shown = FEATURES.flatMap(g=>g.items).filter(f => featFilter === 'all' ? true : f.status === featFilter).length;
+  document.getElementById('feat-count').textContent = shown + (featFilter==='all'?'':` of ${total}`) + ' features';
+}
+
+function toggleGroup(gi) {
+  const el = document.getElementById('feat-group-' + gi);
+  el.classList.toggle('open');
+}
+
+async function changeFeatureStatus(gi, fi, status) {
+  const f = FEATURES[gi].items[fi];
+  f.status = status;
+  renderFeatures(); renderDashboard();
+  if (f.id) await dbUpdateFeature(f.id, f);
+}
+
+function editFeature(gi, fi) {
+  const f = FEATURES[gi].items[fi];
+  openModal('Edit Feature', [
+    {label:'Name', key:'name', type:'input', val:f.name},
+    {label:'Status', key:'status', type:'select', options:['working','broken','partial','planned','retired'], val:f.status},
+    {label:'Note', key:'note', type:'input', val:f.note||''},
+  ], async data => {
+    Object.assign(f, data);
+    renderFeatures(); renderDashboard();
+    if (f.id) await dbUpdateFeature(f.id, f);
+  });
+}
+
+function filterFeats(f, btn) {
+  featFilter = f;
+  document.querySelectorAll('#view-features .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderFeatures();
+}
+
+// ══════════════════════════════════════════════════════════
+// ROADMAP
+// ══════════════════════════════════════════════════════════
+function renderRoadmap() {
+  const sprints = [...new Set(TASKS.map(t => t.sprint))];
+  let html = '';
+
+  sprints.forEach(s => {
+    let tasks = TASKS.filter(t => t.sprint === s);
+    const first = tasks[0];
+    if(taskFilter === 'open') tasks = tasks.filter(t => !t.done);
+    if(taskFilter === 'done') tasks = tasks.filter(t => t.done);
+    if(searchQuery) tasks = tasks.filter(t => t.title.toLowerCase().includes(searchQuery));
+    if(tasks.length === 0 && taskFilter !== 'all') return;
+
+    const done = tasks.filter(t=>t.done).length;
+    html += `<div class="sprint">
+      <div class="sprint-header">
+        <div class="sprint-tag" style="background:${first.sprintColor}22;color:${first.sprintColor}">${first.sprintLabel}</div>
+        <div style="flex:1">
+          <div class="sprint-title">${first.sprintTitle}</div>
+          <div class="sprint-sub">${first.sprintSub}</div>
+        </div>
+        <div style="font-size:9px;color:var(--txt3)">${done}/${tasks.length} done</div>
+      </div>
+      ${tasks.map(t => `
+        <div class="task-item ${t.done?'done':''}" onclick="toggleTask(${t.id})">
+          <div class="task-check ${t.done?'checked':''}">${t.done?'✓':''}</div>
+          <div style="flex:1">
+            <div class="task-title">${t.title}</div>
+            <div class="task-file">${t.file}</div>
+            <div class="task-desc">${t.desc}</div>
+          </div>
+          <div style="display:flex;gap:4px;flex-shrink:0" onclick="event.stopPropagation()">
+            <button class="fi-btn" onclick="editTask(${t.id})">EDIT</button>
+            <button class="fi-btn" style="color:var(--red)" onclick="deleteTask(${t.id})">DEL</button>
+          </div>
+        </div>`).join('')}
+    </div>`;
+  });
+
+  document.getElementById('roadmap-body').innerHTML = html;
+  const done = TASKS.filter(t=>t.done).length;
+  document.getElementById('task-count').textContent = done + ' / ' + TASKS.length + ' done';
+  document.getElementById('sb-task-count').textContent = TASKS.length;
+  document.getElementById('stat-tasks-done').textContent = done + ' done';
+}
+
+async function toggleTask(id) {
+  const t = TASKS.find(x => x.id === id);
+  t.done = !t.done;
+  renderRoadmap(); renderDashboard();
+  await dbToggleTask(id, t.done);
+}
+
+async function deleteTask(id) {
+  if(!confirm('Delete task?')) return;
+  const ok = await dbDeleteTask(id);
+  if (ok) {
+    TASKS = TASKS.filter(t => t.id !== id);
+    renderRoadmap(); renderDashboard();
+  }
+}
+
+function editTask(id) {
+  const t = TASKS.find(x => x.id === id);
+  openModal('Edit Task', [
+    {label:'Title', key:'title', type:'input', val:t.title},
+    {label:'File / Location', key:'file', type:'input', val:t.file},
+    {label:'Description', key:'desc', type:'textarea', val:t.desc},
+    {label:'Sprint', key:'sprint', type:'select', options:['1','2','3','4','5','6'], val:String(t.sprint)},
+  ], async data => {
+    Object.assign(t, {...data, sprint: parseInt(data.sprint)});
+    renderRoadmap(); renderDashboard();
+    await dbUpdateTask(id, t);
+  });
+}
+
+function openAddTask() {
+  openModal('Add Task', [
+    {label:'Title', key:'title', type:'input', val:''},
+    {label:'Sprint', key:'sprint', type:'select', options:['1','2','3','4','5','6'], val:'1'},
+    {label:'File / Location', key:'file', type:'input', val:''},
+    {label:'Description', key:'desc', type:'textarea', val:''},
+  ], async data => {
+    const sprintNum = parseInt(data.sprint);
+    const ref = TASKS.find(t => t.sprint === sprintNum) || TASKS[0] || {};
+    const row = await dbAddTask({
+      sprint: sprintNum,
+      sprintLabel: ref.sprintLabel || ('SPRINT ' + sprintNum),
+      sprintColor: ref.sprintColor || 'var(--accent)',
+      sprintTitle: ref.sprintTitle || '',
+      sprintSub: ref.sprintSub || '',
+      ...data
+    });
+    if (row) {
+      TASKS.push({
+        id: row.id, sprint: row.sprint,
+        sprintLabel: row.sprint_label || ref.sprintLabel,
+        sprintColor: row.sprint_color || ref.sprintColor,
+        sprintTitle: row.sprint_title || ref.sprintTitle,
+        sprintSub: row.sprint_sub || ref.sprintSub,
+        title: row.title, file: row.file || '', desc: row.description || '', done: false
+      });
+      renderRoadmap(); renderDashboard();
+    }
+  });
+}
+
+function filterTasks(f, btn) {
+  taskFilter = f;
+  document.querySelectorAll('#view-roadmap .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderRoadmap();
+}
+
+// ══════════════════════════════════════════════════════════
+// CHANGELOG
+// ══════════════════════════════════════════════════════════
+function renderChangelog() {
+  document.getElementById('changelog-body').innerHTML = `
+    <div class="cl-entry">
+      <div class="cl-version">
+        <div class="cl-ver-tag">[Unreleased]</div>
+        <div class="cl-ver-date">In Progress</div>
+        <div class="cl-ver-label">Documentation sprint</div>
+      </div>
+      <div class="cl-section"><div class="cl-section-title">ADDED</div>
+        ${['ROADMAP.md — full prioritised feature roadmap','CHANGELOG.md','ARCHITECTURE.md — data flow diagrams','FEATURE_STATUS.md','KNOWN_BUGS.md — bugs with file + line references','CLEANUP_LIST.md','DEAD_CODE.md','HONEST_REVIEW.md','DECISIONS.md — architectural decision records'].map(i=>`<div class="cl-item added">• ${i}</div>`).join('')}
+      </div>
+      <div class="cl-section"><div class="cl-section-title">BROKEN (to fix next session)</div>
+        <div class="cl-item deleted">• Auto-debrief crashes — calls deleted stage_lookup.py (KNOWN_BUGS #1)</div>
+        <div class="cl-item deleted">• [STAGE] logs on every packet (KNOWN_BUGS #2)</div>
+      </div>
+    </div>
+    <div class="cl-entry">
+      <div class="cl-version">
+        <div class="cl-ver-tag">[1.0.4]</div>
+        <div class="cl-ver-date">Stage Detection Rebuild</div>
+      </div>
+      <div class="cl-section"><div class="cl-section-title">ADDED</div>
+        ${['LocationId (offset 262, uint16) — exact stage country ID','RouteId (offset 264, uint16) — exact stage name ID','VehicleId, VehicleClassId, VehicleManufacturerId','TyreStateBL/BR/FL/FR — tyre condition per corner','ids.json loading — 20 locations, 264 routes, UTF-16','[STAGE] console output: LocationId=28 → RALLY IBERIA','custom1.json — full custom packet definition (all 75 fields)'].map(i=>`<div class="cl-item added">• ${i}</div>`).join('')}
+      </div>
+      <div class="cl-section"><div class="cl-section-title">CHANGED</div>
+        <div class="cl-item changed">• UDP port: 20777 → 20778</div>
+        <div class="cl-item changed">• Stage name now prepended to auto-debrief brief</div>
+      </div>
+      <div class="cl-section"><div class="cl-section-title">REMOVED</div>
+        <div class="cl-item deleted">• Distance-based stage detection heuristics from UdpMonitor</div>
+        <div class="cl-item deleted">• Stage confirmation dialog flow (dead UX)</div>
+      </div>
+    </div>
+    <div class="cl-entry">
+      <div class="cl-version">
+        <div class="cl-ver-tag">[1.0.3]</div>
+        <div class="cl-ver-date">Modular Restructure</div>
+      </div>
+      <div class="cl-section"><div class="cl-section-title">CHANGED (old → new)</div>
+        ${['main.py (god file) → core/app.py + slim main.py entry point','sully_ui.py (monolith) → ui/tabs/*.py + ui/*.py modules','networking.py → network/networking.py','paths.py → paths/paths.py','sully_engine.py (root) → engine/sully_engine.py'].map(i=>`<div class="cl-item changed">• ${i}</div>`).join('')}
+      </div>
+    </div>
+    <div class="cl-entry">
+      <div class="cl-version">
+        <div class="cl-ver-tag">[1.0.0]</div>
+        <div class="cl-ver-date">Initial Python Version</div>
+      </div>
+      <div class="cl-section"><div class="cl-section-title">CORE</div>
+        <div class="cl-item added">• main.py monolithic app, sully_engine.py, networking.py</div>
+        <div class="cl-item added">• Gemini + Ollama backends, basic coaching prompts</div>
+        <div class="cl-item added">• WRC Coach.exe — C# UDP backend (now retired)</div>
+      </div>
+    </div>`;
+}
+
+// ══════════════════════════════════════════════════════════
+// DECISIONS
+// ══════════════════════════════════════════════════════════
+function renderDecisions() {
+  const decisions = [
+    {cat:'UDP & Telemetry', color:'var(--blue)', items:[
+      {q:'Why custom1.json instead of the default WRC packet?', a:"The default WRC UDP packet doesn't expose LocationId or RouteId. Without those, stage detection requires distance-based heuristics which are ~90% ambiguous. custom1.json is EA's official custom packet API — we define the fields we want."},
+      {q:'Why port 20778 instead of 20777?', a:'20777 is the default WRC telemetry port. We use 20778 for our custom1 packet so it doesn\'t conflict with other tools (SimHub etc.) on 20777.'},
+      {q:'Why LocationId/RouteId instead of distance lookup?', a:'Distance lookup had two fatal problems: (1) multiple stages have same length, disambiguation impossible, (2) required user confirmation via chat. EA\'s own IDs are exact, always correct, zero user input.'},
+      {q:'Why spatial downsampling (>2m move threshold)?', a:'Raw UDP at 20-60hz at standstill = thousands of identical rows. At 2m threshold, a 10km stage produces ~5000 meaningful rows instead of ~50,000 noisy ones.'},
+    ]},
+    {cat:'AI & Coaching', color:'var(--accent)', items:[
+      {q:'Why multi-backend (Gemini / Claude / Ollama)?', a:'Gemini: fast, cheap, default. Claude: better at nuanced structured coaching. Ollama: privacy-first, works offline. One backend would alienate a segment of the target market.'},
+      {q:'Why 5 coaching modes?', a:'Rally is contextual. Just finished qualifying needs different response than crashed 3 times in the same corner. Modes let Sully adapt tone and depth without user explaining context every time.'},
+      {q:'Why 4-line auto-debrief format?', a:'Longer debriefs get ignored after the third run. Four lines forces Sully to prioritise. Structured format (SUMMARY / WORST SECTOR / INCONSISTENCY / PRIORITY FIX) — user always knows where to look.'},
+    ]},
+    {cat:'Architecture', color:'var(--purple)', items:[
+      {q:'Why mixins instead of separate handler classes?', a:'SullyTacticalApp needs access to Qt signals and self.* state everywhere. Mixins via multiple inheritance keep all signal wiring in one class hierarchy. Not elegant but practical for a Qt app of this size.'},
+      {q:'Why Supabase instead of local SQLite?', a:'Cross-device sync, cloud leaderboards, profile photos, rival downloads. Auth handled for free. Privacy tradeoff acceptable for sim racing telemetry. Local-only via Ollama + no auth remains as option.'},
+    ]},
+    {cat:'Product', color:'var(--green)', items:[
+      {q:'Why $12–15/month?', a:'Below "feels expensive" threshold for gaming tools. Above "must be garbage" free tier. Comparable to other sim racing coaching apps. 5 free runs/month gives genuine value before the ask.'},
+      {q:'Why WRC first, not F1?', a:'WRC has richer telemetry, smaller but higher-engagement audience, and no dominant coaching tool in the space. F1 is more competitive. WRC is the beachhead; F1 is the expansion.'},
+    ]},
+  ];
+
+  document.getElementById('decisions-body').innerHTML = decisions.map(cat => `
+    <div style="margin-bottom:20px">
+      <div style="font-family:var(--font-display);font-size:11px;font-weight:700;color:${cat.color};letter-spacing:2px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)">${cat.cat.toUpperCase()}</div>
+      ${cat.items.map(item => `
+        <div style="margin-bottom:10px;border:1px solid var(--border);border-radius:3px;overflow:hidden">
+          <div style="padding:8px 12px;background:var(--panel2);font-size:10px;color:var(--white);font-weight:700">${item.q}</div>
+          <div style="padding:8px 12px;font-size:10px;color:var(--txt2);line-height:1.6">${item.a}</div>
+        </div>`).join('')}
+    </div>`).join('');
+}
+
+// ══════════════════════════════════════════════════════════
+// CLEANUP
+// ══════════════════════════════════════════════════════════
+function renderCleanup() {
+  const items = [
+    {priority:'DELETE NOW', color:'var(--red)', items:[
+      {file:'ui/topbar.py', why:'Never imported. core/profile.py explicitly says "No topbar."', lines:'~40'},
+      {file:'engine/session_recorder.py', why:'696 lines. app.py line 239 confirms retired. No imports.', lines:'696'},
+      {file:'engine/stage_lookup.py', why:'Replaced by LocationId/RouteId lookup.', lines:'?'},
+      {file:'import_fixes.py', why:'One-time migration script, already been run.', lines:'141'},
+    ]},
+    {priority:'DELETE CODE BLOCKS', color:'var(--amber)', items:[
+      {file:'core/app.py → _load_known_stages()', why:'Dead — stage lookup retired', lines:'~15'},
+      {file:'core/app.py → _detect_stage()', why:'Dead — calls deleted stage_lookup.py', lines:'~25'},
+      {file:'core/app.py → _ask_stage_confirmation()', why:'Dead — confirmation flow retired', lines:'~20'},
+      {file:'core/app.py → _confirm_stage()', why:'Dead', lines:'~15'},
+      {file:'core/app.py → _save_known_stages()', why:'Dead', lines:'~10'},
+      {file:'core/app.py → _rename_runs_for_stage()', why:'Dead — calls deleted file', lines:'~20'},
+    ]},
+    {priority:'FIX', color:'var(--accent)', items:[
+      {file:'engine/sully_engine.py line 22', why:'Default port 20777 → should be 20778', lines:'1'},
+      {file:'mixins, networking.py (×5)', why:'Silent except: pass swallowing errors', lines:'5'},
+      {file:'engine/sully_engine.py lines 107–120', why:'[STAGE] log spam — flag reset logic wrong', lines:'10'},
+    ]},
+  ];
+
+  document.getElementById('cleanup-body').innerHTML = items.map(cat => `
+    <div style="margin-bottom:20px">
+      <div style="font-family:var(--font-display);font-size:11px;font-weight:700;color:${cat.color};letter-spacing:2px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)">${cat.priority}</div>
+      ${cat.items.map(item => `
+        <div style="display:flex;gap:10px;padding:7px 10px;border:1px solid var(--border);border-radius:3px;margin-bottom:5px;align-items:flex-start">
+          <div style="font-size:9px;padding:2px 7px;background:${cat.color}22;color:${cat.color};border-radius:2px;flex-shrink:0;margin-top:1px">${item.lines}L</div>
+          <div style="flex:1">
+            <div style="font-size:10px;color:var(--white);font-family:var(--font-ui)">${item.file}</div>
+            <div style="font-size:9px;color:var(--txt3);margin-top:2px">${item.why}</div>
+          </div>
+        </div>`).join('')}
+    </div>`).join('');
+}
+
+// ══════════════════════════════════════════════════════════
+// MODAL
+// ══════════════════════════════════════════════════════════
+let _modalCallback = null;
+
+function openModal(title, fields, onSave) {
+  document.getElementById('modal-title').textContent = title;
+  _modalCallback = onSave;
+  document.getElementById('modal-body').innerHTML = fields.map(f => `
+    <div class="form-group">
+      <label class="form-label">${f.label}</label>
+      ${f.type === 'textarea' ? `<textarea class="form-textarea" data-key="${f.key}">${f.val||''}</textarea>`
+       : f.type === 'select' ? `<select class="form-select" data-key="${f.key}">${f.options.map(o=>`<option value="${o}" ${o===f.val?'selected':''}>${o.toUpperCase()}</option>`).join('')}</select>`
+       : `<input class="form-input" type="text" data-key="${f.key}" value="${f.val||''}">`}
+    </div>`).join('');
+  document.getElementById('modal-overlay').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('show');
+  _modalCallback = null;
+}
+
+document.getElementById('modal-save').onclick = () => {
+  const data = {};
+  document.querySelectorAll('[data-key]').forEach(el => { data[el.dataset.key] = el.value; });
+  if(_modalCallback) _modalCallback(data);
+  closeModal();
+};
+
+document.getElementById('modal-overlay').onclick = e => { if(e.target === document.getElementById('modal-overlay')) closeModal(); };
+
+function openAddModal() {
+  const view = document.querySelector('.view.active').id.replace('view-','');
+  if(view === 'bugs') openAddBug();
+  else if(view === 'roadmap') openAddTask();
+  else toast('Select a view to add items');
+}
+
+// ══════════════════════════════════════════════════════════
+// SEARCH
+// ══════════════════════════════════════════════════════════
+function globalSearch(q) {
+  searchQuery = q.toLowerCase();
+  const view = document.querySelector('.view.active').id.replace('view-','');
+  if(view === 'bugs') renderBugs();
+  else if(view === 'features') renderFeatures();
+  else if(view === 'roadmap') renderRoadmap();
+}
+
+// ══════════════════════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════════════════════
+let _toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+
+// ══════════════════════════════════════════════════════════
+// BRAINSTORM CANVAS ENGINE
+// ══════════════════════════════════════════════════════════
+
+const BS = {
+  canvas: null, ctx: null,
+  nodes: [], edges: [],
+  pan: {x:0, y:0}, scale: 1,
+  dragging: null, dragOffX: 0, dragOffY: 0,
+  panning: false, panStart: {x:0, y:0}, panOrigin: {x:0, y:0},
+  connecting: false, connectFrom: null,
+  dirty: false, saveTimer: null,
+  inited: false,
+  W: 0, H: 0,
+};
+
+const BS_COLORS = {
+  idea:    { bg:'#1a0a2e', border:'#a855f7', label:'#a855f7' },
+  feature: { bg:'#001a0a', border:'#00e87a', label:'#00e87a' },
+  bug:     { bg:'#1a0000', border:'#ff3548', label:'#ff3548' },
+  ui:      { bg:'#00101a', border:'#00c8f0', label:'#00c8f0' },
+  note:    { bg:'#0f1419', border:'#6888a0', label:'#6888a0' },
+  html:    { bg:'#0a1a10', border:'#00e87a', label:'#00e87a' },
+  group:   { bg:'#0a0a1a', border:'#3b82f6', label:'#3b82f6' },
+};
+
+function bsInit() {
+  if (BS.inited) { bsResize(); return; }
+  BS.inited = true;
+  BS.canvas = document.getElementById('bs-canvas');
+  BS.ctx = BS.canvas.getContext('2d');
   bsResize();
   bsBindEvents();
   bsLoadFromDB();
