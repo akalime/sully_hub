@@ -530,131 +530,12 @@ const DOC_CONTENT = {
   roadmap: `# ROADMAP\n\nSee the Roadmap view for the interactive sprint board.\n\n6 sprints defined:\n- Sprint 1: Fix before anything else (crash, fish brain, log spam)\n- Sprint 2: Stage name everywhere\n- Sprint 3: Live tab rebuild\n- Sprint 4: Logging & diagnostics\n- Sprint 5: Cleanup (~1000 dead lines)\n- Sprint 6: Pre-launch polish`,
 };
 
-let BUGS = [
-  {id:1, severity:'critical', title:'Auto-debrief crash on every run', file:'core/app.py lines 934–1099', desc:'_fire_auto_debrief() calls _detect_stage() which imports engine/stage_lookup.py — a deleted file. Every auto-debrief crashes silently.', fix:'Replace stage block with ID-based lookup from udp_monitor._last_location_id / _last_route_id. Delete all dead stage methods (~150 lines).', status:'open'},
-  {id:2, severity:'critical', title:'[STAGE] log fires every UDP packet', file:'engine/sully_engine.py lines 107–115', desc:'_stage_logged flag resets when Distance < 1.0 but the reset check runs before the flag is checked — logs on every packet while distance is low.', fix:'Separate reset and log check. Reset on new stage start when _is_active goes False → True transition.', status:'open'},
-  {id:3, severity:'significant', title:'Stage name never reaches UI', file:'engine/sully_engine.py, core/app.py, ui/tabs/live.py', desc:'_last_location_id and _last_route_id stored on udp_monitor but never read to update live tab, run selector labels, CSV filename, or forensic stat bar.', fix:'Wire udp_monitor._last_location_id to all UI display points after each packet parse.', status:'open'},
-  {id:4, severity:'significant', title:'CSV filename has no stage name', file:'engine/sully_engine.py line ~200', desc:'Filename is Run_YYYYMMDD_HHMMSS.csv with no stage info. 155 runs are all named this way.', fix:'Read _last_location_id + _last_route_id at save time. Build Run_RallyIberia_Montclar_20260312.csv', status:'open'},
-  {id:5, severity:'significant', title:'Fish brain — Sully repeats himself', file:'engine/sully_engine.py _build_memory_context()', desc:'prior_feedback_summary not injected into debrief prompt. Sully has no memory of his own previous coaching output — gives identical feedback every run.', fix:'Store last debrief in sully_memory.prior_feedback_summary in Supabase. Load and inject in _build_memory_context(). Add hard rule: never repeat if data doesn\'t confirm issue persists.', status:'open'},
-  {id:6, severity:'significant', title:'_pending_stage_confirm guard blocking chat', file:'core/app.py lines 500, 885', desc:'Guards check _pending_stage_confirm before processing chat. Old stage confirmation flow is dead but state var still present. May silently block messages.', fix:'Delete _pending_stage_confirm state var and all guards.', status:'open'},
-  {id:7, severity:'minor', title:'Silent except: pass swallowing errors (×5)', file:'mixins_profile.py:182, mixins_cloud.py:210+416, networking.py:134+166', desc:'5 locations where exceptions are caught and completely ignored. Failures disappear silently. User sees nothing.', fix:'Replace with except Exception as e: print(f"[error] {e}") at minimum.', status:'open'},
-  {id:8, severity:'minor', title:'topbar.py is orphaned', file:'ui/topbar.py', desc:'build_d5_topbar() is defined but never called anywhere. core/profile.py says "No topbar. Sidebar owns hud_avatar."', fix:'Delete ui/topbar.py entirely.', status:'open'},
-  {id:9, severity:'minor', title:'profile_widget.py in root (wrong location)', file:'profile_widget.py', desc:'Should be in ui/ package but sits in root. Works because Python path includes root, but breaks modular structure.', fix:'Move to ui/profile_widget.py, update 3 import sites.', status:'open'},
-  {id:10, severity:'minor', title:'session_recorder.py — 696 lines of dead weight', file:'engine/session_recorder.py', desc:'Fully retired. core/app.py line 239 says so. Auto-installs mss, sounddevice, openai-whisper on import — none needed.', fix:'Delete the file entirely.', status:'open'},
-  {id:11, severity:'minor', title:'Unused imports in core files', file:'core/app.py, mixins/mixins_cloud.py, mixins/mixins_profile.py', desc:'QColor, TXT_MID, BORDER, QLabel, FONT_MONO, level_progress_pct, TXT_DIM in app.py. QTimer, BORDER, json, FONT_BODY in mixins_cloud. AvatarCircle imported twice.', fix:'Audit and remove each unused import.', status:'open'},
-  {id:12, severity:'minor', title:'Port mismatch risk — UdpMonitor defaults to 20777', file:'engine/sully_engine.py line 22', desc:'UdpMonitor.__init__ defaults to port=20777 but app passes 20778. If anything instantiates UdpMonitor() without port arg it silently listens on wrong port.', fix:'Change default to port=20778.', status:'open'},
-];
-
-let FEATURES = [
-  {group:'Core / Infrastructure', items:[
-    {name:'UDP telemetry receive', status:'working', note:'Port 20778, custom1 packet, 75 fields'},
-    {name:'CSV recording', status:'working', note:'Spatial downsampling, 4 save triggers'},
-    {name:'Auto-load on save', status:'working', note:'run_saved_signal → _auto_load_run'},
-    {name:'Auto-debrief on save', status:'working', note:'Fires after 2.5s delay'},
-    {name:'Config load/save', status:'working', note:'sully_config.json via core/config.py'},
-    {name:'Supabase auth', status:'working', note:'Login, register, token restore'},
-    {name:'Session token refresh', status:'partial', note:'Stale token handling works but triggers on every cold start'},
-    {name:'Font loading', status:'working', note:'Syne + Share Tech Mono bundled'},
-    {name:'Frameless window', status:'working', note:'Drag, resize, minimize, maximize'},
-    {name:'Update system', status:'working', note:'Background check, banner, installer launch'},
-  ]},
-  {group:'Stage Detection', items:[
-    {name:'LocationId from UDP', status:'working', note:'Offset 262, uint16'},
-    {name:'RouteId from UDP', status:'working', note:'Offset 264, uint16'},
-    {name:'ids.json lookup', status:'working', note:'20 locations, 264 routes, exact names'},
-    {name:'Stage name in debrief prompt', status:'working', note:'Prepended as === STAGE: X ==='},
-    {name:'Stage name in CSV filename', status:'broken', note:'Still Run_YYYYMMDD_HHMMSS.csv'},
-    {name:'Stage name in run selector', status:'broken', note:'Shows filename only'},
-    {name:'Stage name in live tab', status:'broken', note:'Not displayed anywhere'},
-    {name:'Stage name in stat bar', status:'broken', note:'Forensic stat bar missing it'},
-    {name:'[STAGE] log spam fix', status:'broken', note:'Prints every packet, flag not resetting'},
-  ]},
-  {group:'AI / Coaching', items:[
-    {name:'Gemini backend', status:'working', note:'Default, gemini-2.0-flash'},
-    {name:'Claude backend', status:'working', note:'claude-haiku-4-5-20251001'},
-    {name:'Ollama local backend', status:'working', note:'gemma3:latest'},
-    {name:'Training mode', status:'working', note:'Detailed technical feedback'},
-    {name:'Race / Qualifying / Consistency modes', status:'working', note:'All 5 core modes'},
-    {name:'Auto-debrief (4-line)', status:'working', note:'Fires after every run'},
-    {name:'Crash analysis', status:'working', note:'Triggered from crash replay'},
-    {name:'Sector analysis', status:'working', note:'Triggered from forensic map click'},
-    {name:'Fish brain (repetition)', status:'broken', note:'Sully repeats same feedback — needs prior_feedback_summary'},
-    {name:'Surface-aware coaching', status:'planned', note:'Gravel vs asphalt vs snow'},
-    {name:'Vehicle-aware coaching', status:'planned', note:'Know which car, class, adjust advice'},
-  ]},
-  {group:'Memory System', items:[
-    {name:'sully_memory load', status:'working', note:'On post-auth'},
-    {name:'sully_memory save after run', status:'working', note:'After debrief completes'},
-    {name:'sully_runs insert', status:'working', note:'Per-run stats saved'},
-    {name:'Recent runs for cross-run delta', status:'working', note:'Last 10 runs loaded'},
-    {name:'Memory bar in chat UI', status:'working', note:'Sessions, form, streak'},
-    {name:'prior_feedback_summary', status:'planned', note:'Not yet injected into debrief prompt'},
-  ]},
-  {group:'Telemetry / Forensic Tab', items:[
-    {name:'CSV load', status:'working', note:''},
-    {name:'Run selector', status:'working', note:''},
-    {name:'Stat bar (speed, G, distance)', status:'working', note:''},
-    {name:'Stage name in stat bar', status:'broken', note:''},
-    {name:'2-col graph grid (INPUTS/POWERTRAIN/SUSPENSION/THERMALS)', status:'working', note:''},
-    {name:'Map (X/Z scatter)', status:'working', note:'Speed/brake/G-force colour modes'},
-    {name:'Map click to scrub', status:'working', note:''},
-    {name:'Sector analysis (worst 3)', status:'working', note:''},
-    {name:'Cross-run delta overlay', status:'partial', note:'Built in mixins, stability unknown'},
-  ]},
-  {group:'Live Tab', items:[
-    {name:'Gear / Speed / RPM / Pedals', status:'working', note:''},
-    {name:'Steering indicator', status:'working', note:''},
-    {name:'Spotter log', status:'working', note:''},
-    {name:'Stage name display', status:'broken', note:'Not shown'},
-    {name:'Car card / vehicle image', status:'planned', note:'Planned — Supabase image by VehicleId'},
-    {name:'Tyre state display', status:'planned', note:'Data available at offsets 250–253'},
-    {name:'ABS indicator', status:'planned', note:'Data at offset 266'},
-  ]},
-  {group:'Network / Cloud Tab', items:[
-    {name:'Cloud run list', status:'working', note:''},
-    {name:'Download rival runs', status:'working', note:''},
-    {name:'Upload telemetry', status:'working', note:''},
-    {name:'Global leaderboard', status:'working', note:''},
-    {name:'Insight panel', status:'working', note:'AI analysis of cloud runs'},
-  ]},
-  {group:'Session Recording', items:[
-    {name:'Screen capture ring buffer', status:'retired', note:'session_recorder.py retired'},
-    {name:'Audio loopback recording', status:'retired', note:'Retired'},
-    {name:'Whisper transcription', status:'retired', note:'Retired'},
-    {name:'Highlight clip detection', status:'retired', note:'Retired'},
-  ]},
-];
-
-let TASKS = [
-  // Sprint 1
-  {id:1, sprint:1, sprintLabel:'SPRINT 1', sprintColor:'var(--red)', sprintTitle:'Fix Before Anything Else', sprintSub:'The product is broken until these are done.', title:'Fix auto-debrief crash', file:'core/app.py', desc:'Replace stage detection block in _fire_auto_debrief() with ID-based lookup. Delete all dead stage methods (~150 lines). Remove _pending_stage_confirm and _known_stages.', done:false},
-  {id:2, sprint:1, sprintLabel:'SPRINT 1', sprintColor:'var(--red)', sprintTitle:'Fix Before Anything Else', sprintSub:'The product is broken until these are done.', title:'Fix Sully fish brain (repetition)', file:'engine/sully_engine.py, network/networking.py, Supabase', desc:'Store last debrief output in sully_memory.prior_feedback_summary. Inject into _build_memory_context(). Add hard rule to prompt: never repeat if issue not confirmed by data.', done:false},
-  {id:3, sprint:1, sprintLabel:'SPRINT 1', sprintColor:'var(--red)', sprintTitle:'Fix Before Anything Else', sprintSub:'The product is broken until these are done.', title:'Fix [STAGE] log spam', file:'engine/sully_engine.py lines 107–120', desc:'Fix flag reset logic — reset on stage transition, not every packet.', done:false},
-  // Sprint 2
-  {id:4, sprint:2, sprintLabel:'SPRINT 2', sprintColor:'var(--amber)', sprintTitle:'Stage Name Everywhere', sprintSub:'The stage is known. Show it.', title:'Stage name in CSV filename', file:'engine/sully_engine.py _save_csv()', desc:'Read _last_location_id + _last_route_id at save time. Build: Run_RallyIberia_Montclar_20260312_182421.csv', done:false},
-  {id:5, sprint:2, sprintLabel:'SPRINT 2', sprintColor:'var(--amber)', sprintTitle:'Stage Name Everywhere', sprintSub:'The stage is known. Show it.', title:'Stage name in run selector', file:'ui/tabs/telemetry.py, mixins/mixins_cloud.py', desc:'Parse stage name from filename when populating run list. Display as "Rally Iberia — Montclar" instead of raw filename.', done:false},
-  {id:6, sprint:2, sprintLabel:'SPRINT 2', sprintColor:'var(--amber)', sprintTitle:'Stage Name Everywhere', sprintSub:'The stage is known. Show it.', title:'Stage name in forensic stat bar', file:'ui/tabs/telemetry.py', desc:'Add stage label to the stat bar when a run is loaded.', done:false},
-  {id:7, sprint:2, sprintLabel:'SPRINT 2', sprintColor:'var(--amber)', sprintTitle:'Stage Name Everywhere', sprintSub:'The stage is known. Show it.', title:'Stage name in live tab', file:'ui/tabs/live.py, core/app.py', desc:'Show current stage name as soon as UDP detects it. Update live when stage changes.', done:false},
-  // Sprint 3
-  {id:8, sprint:3, sprintLabel:'SPRINT 3', sprintColor:'var(--blue)', sprintTitle:'Live Tab Rebuild', sprintSub:'Most visible part of the app on first run.', title:'Stage card', file:'ui/tabs/live.py', desc:'Surface pill (gravel/asphalt/snow colour coded), rally name, route name, stage length.', done:false},
-  {id:9, sprint:3, sprintLabel:'SPRINT 3', sprintColor:'var(--blue)', sprintTitle:'Live Tab Rebuild', sprintSub:'Most visible part of the app on first run.', title:'Car card (text-first)', file:'ui/tabs/live.py', desc:'Vehicle name from ids.json VehicleId lookup. Manufacturer. Class badge (Rally1/2/3).', done:false},
-  {id:10, sprint:3, sprintLabel:'SPRINT 3', sprintColor:'var(--blue)', sprintTitle:'Live Tab Rebuild', sprintSub:'Most visible part of the app on first run.', title:'Car image from Supabase', file:'ui/tabs/live.py', desc:'Upload renders to vehicle_images/{vehicle_id}.png Supabase bucket. Fetch by VehicleId. Cache locally. Fallback to silhouette.', done:false},
-  {id:11, sprint:3, sprintLabel:'SPRINT 3', sprintColor:'var(--blue)', sprintTitle:'Live Tab Rebuild', sprintSub:'Most visible part of the app on first run.', title:'Tyre state indicators', file:'ui/tabs/live.py', desc:'4 corner tyre state bytes (offsets 250–253). Colour coded: green/yellow/red.', done:false},
-  {id:12, sprint:3, sprintLabel:'SPRINT 3', sprintColor:'var(--blue)', sprintTitle:'Live Tab Rebuild', sprintSub:'Most visible part of the app on first run.', title:'ABS + game mode indicators', file:'ui/tabs/live.py', desc:'Small chips: ABS active indicator, game mode (TIME TRIAL / CAREER / CLUBS).', done:false},
-  // Sprint 4
-  {id:13, sprint:4, sprintLabel:'SPRINT 4', sprintColor:'var(--accent)', sprintTitle:'Logging & Diagnostics', sprintSub:'You should be able to see what the app is doing.', title:'Central logger', file:'Multiple files', desc:'Replace all print() calls with structured logger. Log levels: INFO / WARN / ERROR. Write to disk: sully_session_YYYYMMDD.log', done:false},
-  {id:14, sprint:4, sprintLabel:'SPRINT 4', sprintColor:'var(--accent)', sprintTitle:'Logging & Diagnostics', sprintSub:'You should be able to see what the app is doing.', title:'In-app console tab', file:'ui/tabs/', desc:'New tab showing real-time log stream. Lines prefixed: [udp], [recorder], [stage], [debrief], [cloud], [error]. Clear button. Auto-scroll.', done:false},
-  {id:15, sprint:4, sprintLabel:'SPRINT 4', sprintColor:'var(--accent)', sprintTitle:'Logging & Diagnostics', sprintSub:'You should be able to see what the app is doing.', title:'System status panel', file:'ui/', desc:'Always-visible strip: UDP ● Stage ● Recording ● AI Ready ● Cloud ● Green/amber/red dots.', done:false},
-  // Sprint 5
-  {id:16, sprint:5, sprintLabel:'SPRINT 5', sprintColor:'var(--txt2)', sprintTitle:'Cleanup', sprintSub:'~1000 lines of dead code to remove.', title:'Delete engine/session_recorder.py (696 lines)', file:'engine/session_recorder.py', desc:'Fully retired. Auto-installs packages that aren\'t needed.', done:false},
-  {id:17, sprint:5, sprintLabel:'SPRINT 5', sprintColor:'var(--txt2)', sprintTitle:'Cleanup', sprintSub:'~1000 lines of dead code to remove.', title:'Delete ui/topbar.py', file:'ui/topbar.py', desc:'Never called. core/profile.py explicitly says "No topbar."', done:false},
-  {id:18, sprint:5, sprintLabel:'SPRINT 5', sprintColor:'var(--txt2)', sprintTitle:'Cleanup', sprintSub:'~1000 lines of dead code to remove.', title:'Fix silent except: pass (×5 locations)', file:'mixins, networking.py', desc:'5 locations where exceptions disappear silently.', done:false},
-  {id:19, sprint:5, sprintLabel:'SPRINT 5', sprintColor:'var(--txt2)', sprintTitle:'Cleanup', sprintSub:'~1000 lines of dead code to remove.', title:'Fix default port 20777 → 20778', file:'engine/sully_engine.py line 22', desc:'Change UdpMonitor default to port=20778.', done:false},
-  // Sprint 6
-  {id:20, sprint:6, sprintLabel:'SPRINT 6', sprintColor:'var(--green)', sprintTitle:'Pre-Launch Polish', sprintSub:'Everything needed before charging money.', title:'Onboarding wizard', file:'ui/dialogs.py', desc:'Confirms: EA WRC detected, custom1.json in place, UDP firing, cloud connected.', done:false},
-  {id:21, sprint:6, sprintLabel:'SPRINT 6', sprintColor:'var(--green)', sprintTitle:'Pre-Launch Polish', sprintSub:'Everything needed before charging money.', title:'Free tier enforcement', file:'network/networking.py, Supabase', desc:'5 runs/month limit. Clear UI for what\'s free vs paid. Supabase row count enforced server-side.', done:false},
-  {id:22, sprint:6, sprintLabel:'SPRINT 6', sprintColor:'var(--green)', sprintTitle:'Pre-Launch Polish', sprintSub:'Everything needed before charging money.', title:'Pricing + payment', file:'TBD', desc:'Stripe integration or similar. $12–15/month.', done:false},
-];
+// ── SUPABASE DATA (loaded on login) ──
+let BUGS = [];
+let FEATURES_RAW = []; // flat rows from DB
+let TASKS = [];
+// FEATURES stays as grouped array for render — rebuilt from FEATURES_RAW
+let FEATURES = [];
 
 let bugFilter = 'all';
 let featFilter = 'all';
@@ -831,16 +712,31 @@ function filterBugs(f, btn) {
   renderBugs();
 }
 
-function markFixed(e, id) { e.stopPropagation(); BUGS.find(b=>b.id===id).status='fixed'; renderBugs(); toast('Bug #'+id+' marked fixed'); }
-function markOpen(e, id)  { e.stopPropagation(); BUGS.find(b=>b.id===id).status='open'; renderBugs(); toast('Bug #'+id+' reopened'); }
+async function markFixed(e, id) {
+  e.stopPropagation();
+  const b = BUGS.find(b => b.id === id);
+  if (!b) return;
+  b.status = 'fixed';
+  renderBugs(); renderDashboard();
+  await dbUpdateBug(id, b);
+}
+async function markOpen(e, id) {
+  e.stopPropagation();
+  const b = BUGS.find(b => b.id === id);
+  if (!b) return;
+  b.status = 'open';
+  renderBugs(); renderDashboard();
+  await dbUpdateBug(id, b);
+}
 
-function deleteBug(e, id) {
+async function deleteBug(e, id) {
   e.stopPropagation();
   if(!confirm('Delete bug #'+id+'?')) return;
-  BUGS = BUGS.filter(b => b.id !== id);
-  renderBugs();
-  renderDashboard();
-  toast('Bug deleted');
+  const ok = await dbDeleteBug(id);
+  if (ok) {
+    BUGS = BUGS.filter(b => b.id !== id);
+    renderBugs(); renderDashboard();
+  }
 }
 
 function editBug(e, id) {
@@ -853,7 +749,11 @@ function editBug(e, id) {
     {label:'File', key:'file', type:'input', val:b.file},
     {label:'Description', key:'desc', type:'textarea', val:b.desc},
     {label:'Fix', key:'fix', type:'textarea', val:b.fix},
-  ], data => { Object.assign(b, data); renderBugs(); renderDashboard(); toast('Bug updated'); });
+  ], async data => {
+    Object.assign(b, data);
+    renderBugs(); renderDashboard();
+    await dbUpdateBug(id, b);
+  });
 }
 
 function openAddBug() {
@@ -863,10 +763,13 @@ function openAddBug() {
     {label:'File', key:'file', type:'input', val:''},
     {label:'Description', key:'desc', type:'textarea', val:''},
     {label:'Fix', key:'fix', type:'textarea', val:''},
-  ], data => {
-    const id = Math.max(...BUGS.map(b=>b.id)) + 1;
-    BUGS.push({id, ...data, status:'open'});
-    renderBugs(); renderDashboard(); toast('Bug #'+id+' added');
+  ], async data => {
+    const row = await dbAddBug({ ...data, status: 'open' });
+    if (row) {
+      BUGS.push({ id: row.id, severity: row.severity, title: row.title,
+        file: row.file || '', desc: row.description || '', fix: row.fix || '', status: row.status });
+      renderBugs(); renderDashboard();
+    }
   });
 }
 
@@ -926,11 +829,11 @@ function toggleGroup(gi) {
   el.classList.toggle('open');
 }
 
-function changeFeatureStatus(gi, fi, status) {
-  FEATURES[gi].items[fi].status = status;
-  renderFeatures();
-  renderDashboard();
-  toast('Feature status updated');
+async function changeFeatureStatus(gi, fi, status) {
+  const f = FEATURES[gi].items[fi];
+  f.status = status;
+  renderFeatures(); renderDashboard();
+  if (f.id) await dbUpdateFeature(f.id, f);
 }
 
 function editFeature(gi, fi) {
@@ -939,7 +842,11 @@ function editFeature(gi, fi) {
     {label:'Name', key:'name', type:'input', val:f.name},
     {label:'Status', key:'status', type:'select', options:['working','broken','partial','planned','retired'], val:f.status},
     {label:'Note', key:'note', type:'input', val:f.note||''},
-  ], data => { Object.assign(f, data); renderFeatures(); renderDashboard(); toast('Feature updated'); });
+  ], async data => {
+    Object.assign(f, data);
+    renderFeatures(); renderDashboard();
+    if (f.id) await dbUpdateFeature(f.id, f);
+  });
 }
 
 function filterFeats(f, btn) {
@@ -997,20 +904,20 @@ function renderRoadmap() {
   document.getElementById('stat-tasks-done').textContent = done + ' done';
 }
 
-function toggleTask(id) {
+async function toggleTask(id) {
   const t = TASKS.find(x => x.id === id);
   t.done = !t.done;
-  renderRoadmap();
-  renderDashboard();
-  toast(t.done ? 'Task marked done ✓' : 'Task reopened');
+  renderRoadmap(); renderDashboard();
+  await dbToggleTask(id, t.done);
 }
 
-function deleteTask(id) {
+async function deleteTask(id) {
   if(!confirm('Delete task?')) return;
-  TASKS = TASKS.filter(t => t.id !== id);
-  renderRoadmap();
-  renderDashboard();
-  toast('Task deleted');
+  const ok = await dbDeleteTask(id);
+  if (ok) {
+    TASKS = TASKS.filter(t => t.id !== id);
+    renderRoadmap(); renderDashboard();
+  }
 }
 
 function editTask(id) {
@@ -1020,7 +927,11 @@ function editTask(id) {
     {label:'File / Location', key:'file', type:'input', val:t.file},
     {label:'Description', key:'desc', type:'textarea', val:t.desc},
     {label:'Sprint', key:'sprint', type:'select', options:['1','2','3','4','5','6'], val:String(t.sprint)},
-  ], data => { Object.assign(t, {...data, sprint:parseInt(data.sprint)}); renderRoadmap(); renderDashboard(); toast('Task updated'); });
+  ], async data => {
+    Object.assign(t, {...data, sprint: parseInt(data.sprint)});
+    renderRoadmap(); renderDashboard();
+    await dbUpdateTask(id, t);
+  });
 }
 
 function openAddTask() {
@@ -1029,12 +940,28 @@ function openAddTask() {
     {label:'Sprint', key:'sprint', type:'select', options:['1','2','3','4','5','6'], val:'1'},
     {label:'File / Location', key:'file', type:'input', val:''},
     {label:'Description', key:'desc', type:'textarea', val:''},
-  ], data => {
-    const id = Math.max(...TASKS.map(t=>t.id)) + 1;
+  ], async data => {
     const sprintNum = parseInt(data.sprint);
-    const ref = TASKS.find(t => t.sprint === sprintNum) || TASKS[0];
-    TASKS.push({id, sprint:sprintNum, sprintLabel:ref.sprintLabel, sprintColor:ref.sprintColor, sprintTitle:ref.sprintTitle, sprintSub:ref.sprintSub, ...data, done:false});
-    renderRoadmap(); renderDashboard(); toast('Task added');
+    const ref = TASKS.find(t => t.sprint === sprintNum) || TASKS[0] || {};
+    const row = await dbAddTask({
+      sprint: sprintNum,
+      sprintLabel: ref.sprintLabel || ('SPRINT ' + sprintNum),
+      sprintColor: ref.sprintColor || 'var(--accent)',
+      sprintTitle: ref.sprintTitle || '',
+      sprintSub: ref.sprintSub || '',
+      ...data
+    });
+    if (row) {
+      TASKS.push({
+        id: row.id, sprint: row.sprint,
+        sprintLabel: row.sprint_label || ref.sprintLabel,
+        sprintColor: row.sprint_color || ref.sprintColor,
+        sprintTitle: row.sprint_title || ref.sprintTitle,
+        sprintSub: row.sprint_sub || ref.sprintSub,
+        title: row.title, file: row.file || '', desc: row.description || '', done: false
+      });
+      renderRoadmap(); renderDashboard();
+    }
   });
 }
 
@@ -1243,9 +1170,165 @@ function toast(msg) {
 }
 
 // ══════════════════════════════════════════════════════════
-// INIT
+// SUPABASE DATA LAYER
 // ══════════════════════════════════════════════════════════
-renderDashboard();
+
+function groupFeatures(rows) {
+  const map = {};
+  rows.forEach(r => {
+    if (!map[r.group_name]) map[r.group_name] = { group: r.group_name, items: [] };
+    map[r.group_name].items.push({ id: r.id, name: r.name, status: r.status, note: r.note || '' });
+  });
+  return Object.values(map);
+}
+
+async function loadAllData() {
+  showLoadingOverlay(true);
+  try {
+    const [bugsRes, tasksRes, featuresRes] = await Promise.all([
+      supa.from('hub_bugs').select('*').order('id'),
+      supa.from('hub_tasks').select('*').order('sprint').order('id'),
+      supa.from('hub_features').select('*').order('id'),
+    ]);
+    if (bugsRes.error) throw bugsRes.error;
+    if (tasksRes.error) throw tasksRes.error;
+    if (featuresRes.error) throw featuresRes.error;
+
+    BUGS = bugsRes.data.map(r => ({
+      id: r.id, severity: r.severity, title: r.title,
+      file: r.file || '', desc: r.description || '', fix: r.fix || '', status: r.status
+    }));
+
+    TASKS = tasksRes.data.map(r => ({
+      id: r.id, sprint: r.sprint,
+      sprintLabel: r.sprint_label || ('SPRINT ' + r.sprint),
+      sprintColor: r.sprint_color || 'var(--accent)',
+      sprintTitle: r.sprint_title || '',
+      sprintSub: r.sprint_sub || '',
+      title: r.title, file: r.file || '', desc: r.description || '',
+      done: r.done
+    }));
+
+    FEATURES_RAW = featuresRes.data;
+    FEATURES = groupFeatures(FEATURES_RAW);
+
+  } catch(e) {
+    console.error('[hub] loadAllData failed:', e);
+    showToast('Failed to load data: ' + e.message, 'error');
+  }
+  showLoadingOverlay(false);
+  renderDashboard();
+}
+
+function showLoadingOverlay(show) {
+  let el = document.getElementById('loading-overlay');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'loading-overlay';
+    el.style.cssText = `position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;
+      justify-content:center;z-index:9999;font-family:var(--font-ui);color:var(--accent);
+      font-size:11px;letter-spacing:3px;`;
+    el.innerHTML = '<div>LOADING HUB DATA...</div>';
+    document.body.appendChild(el);
+  }
+  el.style.display = show ? 'flex' : 'none';
+}
+
+function showToast(msg, type='info') {
+  const t = document.createElement('div');
+  const col = type === 'error' ? 'var(--red)' : type === 'success' ? 'var(--green)' : 'var(--accent)';
+  t.style.cssText = `position:fixed;bottom:24px;right:24px;background:var(--card);border:1px solid ${col};
+    color:var(--txt1);padding:10px 16px;font-family:var(--font-ui);font-size:10px;letter-spacing:1px;
+    z-index:9999;border-radius:2px;`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+// ── SUPABASE WRITE HELPERS ───────────────────────────────
+
+async function dbUpdateBug(id, changes) {
+  const { error } = await supa.from('hub_bugs').update({
+    severity: changes.severity,
+    title: changes.title,
+    file: changes.file,
+    description: changes.desc,
+    fix: changes.fix,
+    status: changes.status,
+    updated_at: new Date().toISOString()
+  }).eq('id', id);
+  if (error) { showToast('Save failed: ' + error.message, 'error'); return false; }
+  showToast('Bug updated', 'success');
+  return true;
+}
+
+async function dbAddBug(data) {
+  const { data: row, error } = await supa.from('hub_bugs').insert({
+    severity: data.severity, title: data.title,
+    file: data.file, description: data.desc, fix: data.fix, status: data.status
+  }).select().single();
+  if (error) { showToast('Add failed: ' + error.message, 'error'); return null; }
+  showToast('Bug added', 'success');
+  return row;
+}
+
+async function dbDeleteBug(id) {
+  const { error } = await supa.from('hub_bugs').delete().eq('id', id);
+  if (error) { showToast('Delete failed: ' + error.message, 'error'); return false; }
+  showToast('Bug deleted', 'success');
+  return true;
+}
+
+async function dbToggleTask(id, done) {
+  const { error } = await supa.from('hub_tasks').update({ done, updated_at: new Date().toISOString() }).eq('id', id);
+  if (error) { showToast('Save failed: ' + error.message, 'error'); return false; }
+  return true;
+}
+
+async function dbUpdateTask(id, changes) {
+  const { error } = await supa.from('hub_tasks').update({
+    title: changes.title, file: changes.file,
+    description: changes.desc, sprint: parseInt(changes.sprint),
+    updated_at: new Date().toISOString()
+  }).eq('id', id);
+  if (error) { showToast('Save failed: ' + error.message, 'error'); return false; }
+  showToast('Task updated', 'success');
+  return true;
+}
+
+async function dbAddTask(data) {
+  const { data: row, error } = await supa.from('hub_tasks').insert({
+    sprint: parseInt(data.sprint),
+    sprint_label: data.sprintLabel, sprint_color: data.sprintColor,
+    sprint_title: data.sprintTitle, sprint_sub: data.sprintSub,
+    title: data.title, file: data.file, description: data.desc, done: false
+  }).select().single();
+  if (error) { showToast('Add failed: ' + error.message, 'error'); return null; }
+  showToast('Task added', 'success');
+  return row;
+}
+
+async function dbDeleteTask(id) {
+  const { error } = await supa.from('hub_tasks').delete().eq('id', id);
+  if (error) { showToast('Delete failed: ' + error.message, 'error'); return false; }
+  showToast('Task deleted', 'success');
+  return true;
+}
+
+async function dbUpdateFeature(id, changes) {
+  const { error } = await supa.from('hub_features').update({
+    status: changes.status, note: changes.note,
+    updated_at: new Date().toISOString()
+  }).eq('id', id);
+  if (error) { showToast('Save failed: ' + error.message, 'error'); return false; }
+  showToast('Feature updated', 'success');
+  return true;
+}
+
+// ══════════════════════════════════════════════════════════
+// INIT — called after login
+// ══════════════════════════════════════════════════════════
+// renderDashboard() is called inside loadAllData() after data arrives
 </script>
 
 <!-- SUPABASE AUTH -->
@@ -1331,6 +1414,8 @@ function unlockApp(user) {
   signOutBtn.style.cssText = 'background:none;border:1px solid var(--border);color:var(--txt3);font-family:var(--font-ui);font-size:8px;padding:3px 8px;cursor:pointer;border-radius:2px;letter-spacing:1px;margin-top:4px;width:100%';
   signOutBtn.onclick = signOut;
   footer.appendChild(signOutBtn);
+  // Load all data from Supabase
+  loadAllData();
 }
 
 async function signOut() {
