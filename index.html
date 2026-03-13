@@ -3451,7 +3451,7 @@ async function dbUpdateFeature(id, changes) {
 
 // ── Role management ──────────────────────────────────────
 async function fetchUserRole(uid) {
-  const { data, error } = await supa.from('profiles').select('role').eq('id', uid).maybeSingle();
+  const { data, error } = await supa.from('profiles').select('role').eq('user_id', uid).maybeSingle();
   if (data && data.role) {
     USER_ROLE = data.role;
   } else {
