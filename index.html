@@ -1841,13 +1841,205 @@ function bsWrapText(ctx, text, x, y, maxW, lineH, maxLines) {
 // ── Event Handling ────────────────────────────────────────
 function bsBindEvents() {
   const c = BS.canvas;
+
+  // Mouse (desktop)
   c.addEventListener('mousedown', bsOnMouseDown);
   c.addEventListener('mousemove', bsOnMouseMove);
   c.addEventListener('mouseup', bsOnMouseUp);
   c.addEventListener('wheel', bsOnWheel, {passive:false});
   c.addEventListener('contextmenu', bsOnRightClick);
   c.addEventListener('dblclick', bsOnDblClick);
-  document.addEventListener('keydown', e => { if(e.key==='Escape') { bsCloseMenus(); BS.connecting=false; BS.connectFrom=null; document.getElementById('bs-connect-btn').classList.remove('active'); bsDraw(); }});
+  document.addEventListener('keydown', e => {
+    if(e.key==='Escape') { bsCloseMenus(); BS.connecting=false; BS.connectFrom=null; document.getElementById('bs-connect-btn').classList.remove('active'); bsDraw(); }
+  });
+
+  // Touch (mobile)
+  c.addEventListener('touchstart',  bsOnTouchStart,  {passive:false});
+  c.addEventListener('touchmove',   bsOnTouchMove,   {passive:false});
+  c.addEventListener('touchend',    bsOnTouchEnd,    {passive:false});
+  c.addEventListener('touchcancel', bsOnTouchCancel, {passive:false});
+}
+
+// ── Touch state ───────────────────────────────────────────
+const BST = {
+  holdTimer: null,       // long-press timer
+  holdIdx: -1,           // node being held
+  holdActive: false,     // drag is live after hold
+  lastTap: 0,            // for double-tap detection
+  lastTapPos: null,
+  pinchDist: 0,          // two-finger zoom
+  panTouch: null,        // single-finger pan touch id
+};
+
+function bsTouchWorldPos(touch) {
+  const r = BS.canvas.getBoundingClientRect();
+  return {
+    x: (touch.clientX - r.left - BS.pan.x) / BS.scale,
+    y: (touch.clientY - r.top  - BS.pan.y) / BS.scale,
+  };
+}
+
+function bsTouchScreenPos(touch) {
+  const r = BS.canvas.getBoundingClientRect();
+  return { x: touch.clientX - r.left, y: touch.clientY - r.top };
+}
+
+function bsOnTouchStart(e) {
+  e.preventDefault();
+  const touches = e.touches;
+
+  if (touches.length === 2) {
+    // Two fingers — pinch zoom setup, cancel any hold
+    bsCancelHold();
+    BST.pinchDist = Math.hypot(
+      touches[0].clientX - touches[1].clientX,
+      touches[0].clientY - touches[1].clientY
+    );
+    BST.panTouch = null;
+    return;
+  }
+
+  if (touches.length !== 1) return;
+  const t = touches[0];
+  const wp = bsTouchWorldPos(t);
+  const hit = bsHitNode(wp.x, wp.y);
+
+  // Double-tap detection (< 300ms, < 30px)
+  const now = Date.now();
+  const sp = bsTouchScreenPos(t);
+  if (now - BST.lastTap < 300 && BST.lastTapPos) {
+    const dx = sp.x - BST.lastTapPos.x, dy = sp.y - BST.lastTapPos.y;
+    if (Math.hypot(dx, dy) < 30) {
+      BST.lastTap = 0;
+      bsCancelHold();
+      if (hit >= 0) bsEditNode(hit);
+      else bsAddNodeAt(wp.x, wp.y);
+      return;
+    }
+  }
+  BST.lastTap = now;
+  BST.lastTapPos = sp;
+
+  if (hit >= 0) {
+    // Start long-press timer for dragging
+    BST.holdIdx = hit;
+    BST.holdActive = false;
+    BST._holdStartWorld = wp;
+    BST._holdStartScreen = sp;
+
+    BST.holdTimer = setTimeout(() => {
+      // Long press confirmed — start drag
+      BST.holdActive = true;
+      BS.dragging = BST.holdIdx;
+      BS.dragOffX = BST._holdStartWorld.x - BS.nodes[BST.holdIdx].x;
+      BS.dragOffY = BST._holdStartWorld.y - BS.nodes[BST.holdIdx].y;
+      // Haptic feedback if available
+      if (navigator.vibrate) navigator.vibrate(40);
+      bsDraw();
+    }, 500); // 500ms hold to start drag
+
+  } else {
+    // No node hit — start panning immediately
+    BST.panTouch = t.identifier;
+    BS.panning = true;
+    BS.panStart  = { x: t.clientX, y: t.clientY };
+    BS.panOrigin = { x: BS.pan.x, y: BS.pan.y };
+  }
+}
+
+function bsOnTouchMove(e) {
+  e.preventDefault();
+  const touches = e.touches;
+
+  // Pinch zoom (2 fingers)
+  if (touches.length === 2) {
+    bsCancelHold();
+    const newDist = Math.hypot(
+      touches[0].clientX - touches[1].clientX,
+      touches[0].clientY - touches[1].clientY
+    );
+    if (BST.pinchDist > 0) {
+      const factor = newDist / BST.pinchDist;
+      // Zoom around midpoint
+      const mx = (touches[0].clientX + touches[1].clientX) / 2;
+      const my = (touches[0].clientY + touches[1].clientY) / 2;
+      const r  = BS.canvas.getBoundingClientRect();
+      const cx = mx - r.left, cy = my - r.top;
+      BS.pan.x = cx - (cx - BS.pan.x) * factor;
+      BS.pan.y = cy - (cy - BS.pan.y) * factor;
+      BS.scale = Math.max(0.2, Math.min(3, BS.scale * factor));
+    }
+    BST.pinchDist = newDist;
+    bsDraw();
+    return;
+  }
+
+  if (touches.length !== 1) return;
+  const t = touches[0];
+  const wp = bsTouchWorldPos(t);
+  const sp = bsTouchScreenPos(t);
+
+  // Cancel hold if finger moved too far before timer fires
+  if (BST.holdTimer && !BST.holdActive && BST._holdStartScreen) {
+    const dx = sp.x - BST._holdStartScreen.x;
+    const dy = sp.y - BST._holdStartScreen.y;
+    if (Math.hypot(dx, dy) > 10) {
+      bsCancelHold();
+      // Switch to pan
+      BST.panTouch = t.identifier;
+      BS.panning = true;
+      BS.panStart  = { x: t.clientX, y: t.clientY };
+      BS.panOrigin = { x: BS.pan.x, y: BS.pan.y };
+    }
+  }
+
+  // Drag node
+  if (BST.holdActive && BS.dragging !== null) {
+    BS.nodes[BS.dragging].x = wp.x - BS.dragOffX;
+    BS.nodes[BS.dragging].y = wp.y - BS.dragOffY;
+    bsDraw();
+    return;
+  }
+
+  // Pan canvas
+  if (BS.panning) {
+    BS.pan.x = BS.panOrigin.x + (t.clientX - BS.panStart.x);
+    BS.pan.y = BS.panOrigin.y + (t.clientY - BS.panStart.y);
+    bsDraw();
+  }
+}
+
+function bsOnTouchEnd(e) {
+  e.preventDefault();
+
+  const wasHoldActive = BST.holdActive;
+  const wasDragging = BS.dragging;
+
+  bsCancelHold();
+
+  if (wasHoldActive && wasDragging !== null) {
+    BS.dragging = null;
+    bsScheduleSave();
+  }
+
+  BS.panning = false;
+  BST.panTouch = null;
+  BST.pinchDist = 0;
+  bsDraw();
+}
+
+function bsOnTouchCancel(e) {
+  bsCancelHold();
+  BS.dragging = null;
+  BS.panning = false;
+  BST.panTouch = null;
+  BST.pinchDist = 0;
+}
+
+function bsCancelHold() {
+  if (BST.holdTimer) { clearTimeout(BST.holdTimer); BST.holdTimer = null; }
+  BST.holdIdx = -1;
+  BST.holdActive = false;
 }
 
 function bsWorldPos(e) {
