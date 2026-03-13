@@ -499,6 +499,58 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
   .tb-btn { font-size: 8px; padding: 5px 8px; }
 }
 
+
+/* ── MOBILE SCROLL FIX (nuclear) ── */
+@media (max-width: 768px) {
+  html, body {
+    overflow: hidden !important;
+    height: 100% !important;
+    position: fixed;
+    width: 100%;
+  }
+  #app { height: 100vh; overflow: hidden; }
+  #main { height: 100%; overflow: hidden; display: flex; flex-direction: column; }
+  #content { flex: 1; overflow: hidden; position: relative; }
+
+  /* Each active view fills content and scrolls natively */
+  .view.active {
+    position: absolute !important;
+    inset: 0 !important;
+    overflow-y: scroll !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior-y: contain;
+    padding-bottom: 72px !important;
+    display: block !important;
+  }
+
+  /* Flatten all nested scroll containers so view scroll works */
+  #bugs-body, #features-body, #roadmap-body,
+  #changelog-body, #decisions-body, #cleanup-body,
+  #dash-body, #docs-grid, #rd-grid {
+    overflow: visible !important;
+    height: auto !important;
+    flex: none !important;
+    max-height: none !important;
+  }
+
+  /* Brainstorm is canvas — keep it non-scrolling */
+  #view-brainstorm.active {
+    overflow: hidden !important;
+    display: flex !important;
+  }
+
+  /* Sticky filter/toolbar bars */
+  .filter-bar, #rd-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: var(--panel);
+  }
+
+  /* Bottom nav stays fixed above everything */
+  #bottom-nav { z-index: 600; }
+}
+
 </style>
 </head>
 <body>
@@ -2795,4 +2847,3 @@ document.addEventListener('DOMContentLoaded', () => {
 </div>
 </body>
 </html>
-//
