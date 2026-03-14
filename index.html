@@ -959,6 +959,34 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
           <button class="lab-tab-btn" data-tab="history" onclick="labSwitchTab('history')">HISTORY</button>
         </div>
         <div id="lab-content"></div>
+        <!-- Permanent results area — survives tab switches -->
+        <div id="lab-results" class="lab-results-area" style="display:none;padding:0 20px 20px">
+          <div class="lab-results-header">
+            <div class="lab-results-title">CONVERSATION</div>
+            <div id="lab-rules-fired" class="lab-rules-fired"></div>
+            <button class="lab-act-btn" onclick="labResetConversation()">RESET</button>
+          </div>
+          <div class="lab-results-grid">
+            <div class="lab-result-panel">
+              <div class="lab-result-label" style="color:var(--accent)">⬡ CLAUDE</div>
+              <div id="lab-claude-convo" class="lab-convo-thread"></div>
+              <div class="lab-convo-input-row">
+                <input id="lab-claude-reply" class="lab-input" placeholder="Reply to Sully..." onkeydown="if(event.key==='Enter')labReply('claude')">
+                <button class="lab-act-btn" onclick="labReply('claude')" style="flex-shrink:0">SEND</button>
+              </div>
+              <div class="lab-result-actions"><button class="lab-act-btn" onclick="labCapture('claude')">CAPTURE CORRECTION</button></div>
+            </div>
+            <div class="lab-result-panel">
+              <div class="lab-result-label" style="color:var(--amber)">◈ GEMINI</div>
+              <div id="lab-gemini-convo" class="lab-convo-thread"></div>
+              <div class="lab-convo-input-row">
+                <input id="lab-gemini-reply" class="lab-input" placeholder="Reply to Sully..." onkeydown="if(event.key==='Enter')labReply('gemini')">
+                <button class="lab-act-btn" onclick="labReply('gemini')" style="flex-shrink:0">SEND</button>
+              </div>
+              <div class="lab-result-actions"><button class="lab-act-btn" onclick="labCapture('gemini')">CAPTURE CORRECTION</button></div>
+            </div>
+          </div>
+        </div>
       </div>
 
     </div>
