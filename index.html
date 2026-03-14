@@ -1382,7 +1382,22 @@ async function changeFeatureStatus(gi, fi, status) {
   const f = FEATURES[gi].items[fi];
   f.status = status;
   renderFeatures(); renderDashboard();
-  if (f.id) await dbUpdateFeature(f.id, f);
+  if (f.id) {
+    const ok = await dbUpdateFeature(f.id, f);
+    if (!ok) {
+      // Rollback visual
+      f.status = status;
+      renderFeatures();
+    }
+  } else {
+    // No ID — insert new row
+    const { data, error } = await supa.from('hub_features').insert({
+      group_name: FEATURES[gi].group, name: f.name,
+      status: f.status, note: f.note || ''
+    }).select().single();
+    if (!error && data) { f.id = data.id; showToast('Feature saved', 'success'); }
+    else if (error) showToast('Save failed: ' + error.message, 'error');
+  }
 }
 
 function editFeature(gi, fi) {
