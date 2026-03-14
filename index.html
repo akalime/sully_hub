@@ -811,7 +811,8 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
       <div class="tb-title" id="tb-title">Dashboard</div>
       <div class="tb-spacer"></div>
       <input id="search-box" placeholder="Search everything..." oninput="globalSearch(this.value)">
-      <button class="tb-btn admin-only" onclick="exportSession()" style="border-color:var(--purple);color:var(--purple)">⬇ EXPORT</button>
+      <button class="tb-btn" onclick="openUniversalImport()" style="border-color:var(--purple);color:var(--purple)">⬇ IMPORT</button>
+      <button class="tb-btn admin-only" onclick="exportSession()" style="border-color:var(--accent);color:var(--accent)">⬆ EXPORT</button>
       <button class="tb-btn admin-only" onclick="openAddModal()">+ ADD ITEM</button>
     </div>
 
