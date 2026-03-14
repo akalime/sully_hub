@@ -1380,6 +1380,7 @@ function toggleGroup(gi) {
 async function changeFeatureStatus(gi, fi, status) {
   if (!isAdmin()) return;
   const f = FEATURES[gi].items[fi];
+  console.log('[feat] changeStatus', gi, fi, status, 'id:', f.id, 'f:', JSON.stringify(f));
   f.status = status;
   renderFeatures(); renderDashboard();
   if (f.id) {
