@@ -2667,6 +2667,64 @@ async function bsClearHtml(idx) {
 
 
 
+
+// ── Scenario JSON import ──────────────────────────────────
+function labOpenScenarioImport() {
+  document.getElementById('scenario-import-overlay').style.display = 'flex';
+  document.getElementById('scenario-import-input').value = '';
+  document.getElementById('scenario-import-err').style.display = 'none';
+  setTimeout(function(){ document.getElementById('scenario-import-input').focus(); }, 50);
+}
+
+function labCloseScenarioImport() {
+  document.getElementById('scenario-import-overlay').style.display = 'none';
+}
+
+function labDoScenarioImport() {
+  var raw = document.getElementById('scenario-import-input').value.trim();
+  var errEl = document.getElementById('scenario-import-err');
+  errEl.style.display = 'none';
+
+  var p;
+  try {
+    p = JSON.parse(raw);
+  } catch(e) {
+    errEl.textContent = 'Invalid JSON: ' + e.message;
+    errEl.style.display = 'block';
+    return;
+  }
+
+  // Map all known fields
+  var fieldMap = {
+    stage:'sand-stage', mode:'sand-mode', mood:'sand-mood',
+    time:'sand-time', top_speed:'sand-top-speed', dist:'sand-dist',
+    brake:'sand-brake', throttle:'sand-throttle', crashes:'sand-crashes',
+    overlap:'sand-overlap', lifts:'sand-lifts',
+    s1:'sand-s1', s2:'sand-s2', s3:'sand-s3', s4:'sand-s4', s5:'sand-s5',
+    smooth:'sand-smooth', steer:'sand-steer', corrections:'sand-corrections',
+    tyre_fl:'sand-tyre-fl', tyre_fr:'sand-tyre-fr',
+    tyre_bl:'sand-tyre-bl', tyre_br:'sand-tyre-br',
+    sessions:'sand-sessions', form:'sand-form',
+    weaknesses:'sand-weaknesses', strengths:'sand-strengths',
+    last_fix:'sand-last-fix', prev_time:'sand-prev-time',
+    extra:'sand-extra'
+  };
+
+  var loaded = 0;
+  Object.keys(fieldMap).forEach(function(key) {
+    if (p[key] !== undefined) {
+      var el = document.getElementById(fieldMap[key]);
+      if (el) { el.value = p[key]; loaded++; }
+    }
+  });
+
+  labCloseScenarioImport();
+  showToast(loaded + ' fields loaded', 'success');
+
+  // Switch to sandbox tab if not already there
+  if (LAB.activeTab !== 'sandbox') labSwitchTab('sandbox');
+}
+
 // ── Brainstorm prompt modal ───────────────────────────────
 function bsOpenPrompt() {
   document.getElementById('bs-prompt-overlay').style.display = 'flex';
@@ -3253,7 +3311,7 @@ async function rdOpen(url, name, ftype) {
   if (ftype === 'audio') {
     viewer.classList.add('open');
     const audioHtml = '<html><body style="background:#07090c;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">'
-      + '<audio controls autoplay style="width:90%;max-width:500px" src="' + url + '"></audio></body></html>';
+      + '<audio controls autoplay style="width:90%;max-width:500px" src="' + url + '"><' + '/audio><' + '/body><' + '/html>';
     iframe.style.display = 'block';
     if (!isMobile) {
       iframe.src = 'about:blank';
@@ -3307,7 +3365,7 @@ async function rdOpen(url, name, ftype) {
       const text = await resp.text();
       title.textContent = name;
       const codeHtml = '<html><body style="background:#07090c;color:#b8ccd8;font-family:monospace;font-size:12px;padding:20px;margin:0;white-space:pre-wrap;word-break:break-all">'
-        + text.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</body></html>';
+        + text.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</' + 'body></' + 'html>';
       if (isMobile) {
         rdShowFullPage(codeHtml, name, url);
       } else {
@@ -3838,6 +3896,11 @@ function labLoadPreset(key) {
 
 function labRenderSandbox() {
   var html = '<div class="lab-section-header"><div><div class="lab-section-title">TEST SANDBOX</div><div class="lab-section-sub">Build any scenario. Control every variable Sully sees. Test Claude and Gemini side by side.</div></div></div>';
+
+  // Import scenario button
+  html += '<div style="display:flex;justify-content:flex-end;margin-bottom:8px">';
+  html += '<button class="lab-btn" style="border-color:var(--purple);color:var(--purple)" onclick="labOpenScenarioImport()">⬇ IMPORT SCENARIO JSON</button>';
+  html += '</div>';
 
   // Presets row
   html += '<div class="lab-presets-row">';
@@ -4506,6 +4569,257 @@ function labShowLoading(show) {
 }
 
 
+
+// ══════════════════════════════════════════════════════════
+// UNIVERSAL IMPORT SYSTEM
+// ══════════════════════════════════════════════════════════
+
+function openUniversalImport() {
+  document.getElementById('universal-import-overlay').style.display = 'flex';
+  document.getElementById('universal-import-input').value = '';
+  document.getElementById('universal-import-err').style.display = 'none';
+  document.getElementById('universal-import-preview').style.display = 'none';
+  setTimeout(function(){ document.getElementById('universal-import-input').focus(); }, 50);
+}
+
+function closeUniversalImport() {
+  document.getElementById('universal-import-overlay').style.display = 'none';
+}
+
+function doUniversalImport() {
+  var raw = document.getElementById('universal-import-input').value.trim();
+  var errEl = document.getElementById('universal-import-err');
+  var previewEl = document.getElementById('universal-import-preview');
+  errEl.style.display = 'none';
+  previewEl.style.display = 'none';
+
+  // Try to parse JSON
+  var parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch(e) {
+    errEl.textContent = 'Invalid JSON: ' + e.message;
+    errEl.style.display = 'block';
+    return;
+  }
+
+  // Auto-detect type
+  var type = parsed.type || _detectImportType(parsed);
+  var results = [];
+
+  switch(type) {
+    case 'scenario':
+      results.push(_importScenario(parsed));
+      break;
+    case 'identity':
+      results.push(_importIdentity(parsed));
+      break;
+    case 'rules':
+      results.push(_importRules(parsed));
+      break;
+    case 'nodes':
+    case 'brainstorm':
+      results.push(_importBrainstorm(parsed));
+      break;
+    case 'lab_session':
+      // Import everything at once
+      if (parsed.scenario) results.push(_importScenario(parsed.scenario));
+      if (parsed.identity) results.push(_importIdentityBlocks(parsed.identity));
+      if (parsed.rules)    results.push(_importRulesList(parsed.rules));
+      if (parsed.nodes || parsed.groups || parsed.edges) results.push(_importBrainstorm(parsed));
+      break;
+    default:
+      // Try to guess from shape
+      if (Array.isArray(parsed)) {
+        // Array of nodes?
+        if (parsed[0] && (parsed[0].type || parsed[0].title)) {
+          results.push(_importBrainstorm({nodes: parsed}));
+        } else {
+          errEl.textContent = 'Unknown array format. Add "type" field: scenario, identity, rules, nodes, lab_session';
+          errEl.style.display = 'block';
+          return;
+        }
+      } else {
+        // Try as scenario (has stage/brake/time fields)
+        if (parsed.stage || parsed.brake || parsed.time || parsed.mode) {
+          results.push(_importScenario(parsed));
+        } else {
+          errEl.textContent = 'Unknown type. Add "type" field: scenario, identity, rules, nodes, lab_session';
+          errEl.style.display = 'block';
+          return;
+        }
+      }
+  }
+
+  closeUniversalImport();
+  var msg = results.filter(Boolean).join(' · ');
+  showToast(msg || 'Imported', 'success');
+}
+
+function _detectImportType(obj) {
+  if (obj.stage || obj.brake || obj.mood) return 'scenario';
+  if (obj.blocks || (obj.identity && Array.isArray(obj.identity))) return 'identity';
+  if (obj.nodes || obj.groups || obj.edges) return 'nodes';
+  if (Array.isArray(obj) && obj[0] && obj[0].category) return 'identity';
+  return 'unknown';
+}
+
+// ── Import handlers ───────────────────────────────────────
+
+function _importScenario(p) {
+  var fieldMap = {
+    stage:'sand-stage', mode:'sand-mode', mood:'sand-mood',
+    time:'sand-time', top_speed:'sand-top-speed', dist:'sand-dist',
+    brake:'sand-brake', throttle:'sand-throttle', crashes:'sand-crashes',
+    overlap:'sand-overlap', lifts:'sand-lifts',
+    s1:'sand-s1', s2:'sand-s2', s3:'sand-s3', s4:'sand-s4', s5:'sand-s5',
+    smooth:'sand-smooth', steer:'sand-steer', corrections:'sand-corrections',
+    tyre_fl:'sand-tyre-fl', tyre_fr:'sand-tyre-fr',
+    tyre_bl:'sand-tyre-bl', tyre_br:'sand-tyre-br',
+    sessions:'sand-sessions', form:'sand-form',
+    weaknesses:'sand-weaknesses', strengths:'sand-strengths',
+    last_fix:'sand-last-fix', prev_time:'sand-prev-time',
+    extra:'sand-extra'
+  };
+  var loaded = 0;
+  Object.keys(fieldMap).forEach(function(key) {
+    if (p[key] !== undefined) {
+      var el = document.getElementById(fieldMap[key]);
+      if (el) { el.value = p[key]; loaded++; }
+    }
+  });
+  // Switch to Lab → Sandbox
+  if (document.getElementById('view-lab')) {
+    nav('lab');
+    setTimeout(function(){ labSwitchTab('sandbox'); }, 100);
+  }
+  return loaded + ' scenario fields loaded';
+}
+
+function _importIdentity(p) {
+  var blocks = p.blocks || p.identity || (Array.isArray(p) ? p : null);
+  if (!blocks) return 'No identity blocks found';
+  return _importIdentityBlocks(blocks);
+}
+
+async function _importIdentityBlocks(blocks) {
+  if (!Array.isArray(blocks) || !blocks.length) return '0 identity blocks';
+  var added = 0;
+  for (var i = 0; i < blocks.length; i++) {
+    var b = blocks[i];
+    var res = await supa.from('sully_identity').insert({
+      user_id: LAB.uid || (await supa.auth.getUser()).data.user?.id,
+      category: b.category || 'voice',
+      title: b.title || 'Imported block',
+      content: b.content || '',
+      priority: b.priority || 50,
+      enabled: b.enabled !== false
+    }).select().single();
+    if (!res.error) { LAB.identity.push(res.data); added++; }
+  }
+  nav('lab');
+  setTimeout(function(){ labSwitchTab('identity'); labRenderActiveTab(); labRenderMemoryBar(); }, 100);
+  return added + ' identity blocks added';
+}
+
+async function _importRules(p) {
+  var rules = p.rules || (Array.isArray(p) ? p : null);
+  if (!rules) return 'No rules found';
+  return _importRulesList(rules);
+}
+
+async function _importRulesList(rules) {
+  if (!Array.isArray(rules) || !rules.length) return '0 rules';
+  var added = 0;
+  for (var i = 0; i < rules.length; i++) {
+    var r = rules[i];
+    var res = await supa.from('sully_rules').insert({
+      user_id: LAB.uid || (await supa.auth.getUser()).data.user?.id,
+      title: r.title || 'Imported rule',
+      condition: r.condition || r.if || '',
+      action: r.action || r.then || '',
+      priority: r.priority || 50,
+      enabled: r.enabled !== false
+    }).select().single();
+    if (!res.error) { LAB.rules.push(res.data); added++; }
+  }
+  nav('lab');
+  setTimeout(function(){ labSwitchTab('rules'); labRenderActiveTab(); labRenderMemoryBar(); }, 100);
+  return added + ' rules added';
+}
+
+function _importBrainstorm(parsed) {
+  // Reuse existing brainstorm import
+  var before = BS.nodes.length;
+  var edgesBefore = BS.edges.length;
+
+  var importNodes = [], importEdges = [], importGroups = [];
+  if (Array.isArray(parsed)) {
+    importGroups = parsed.filter(function(n){ return n.type === 'group'; });
+    importNodes  = parsed.filter(function(n){ return n.type !== 'group'; });
+  } else {
+    importGroups = parsed.groups || [];
+    importEdges  = parsed.edges  || [];
+    var allNodes = parsed.nodes || [];
+    importGroups = importGroups.concat(allNodes.filter(function(n){ return n.type === 'group'; }));
+    importNodes  = allNodes.filter(function(n){ return n.type !== 'group'; });
+  }
+
+  // Run the existing import logic inline
+  var tempInput = document.createElement('textarea');
+  tempInput.value = JSON.stringify(parsed);
+  var originalInput = document.getElementById('bs-import-input');
+  if (originalInput) {
+    originalInput.value = tempInput.value;
+    bsDoImport();
+  } else {
+    // Brainstorm not loaded yet — save for when it loads
+    localStorage._pendingBsImport = JSON.stringify(parsed);
+    nav('brainstorm');
+    showToast('Switch to Brainstorm to see imported nodes', 'info');
+    return 'Nodes queued for Brainstorm';
+  }
+
+  var added = BS.nodes.length - before;
+  var edges = BS.edges.length - edgesBefore;
+  nav('brainstorm');
+  return added + ' nodes + ' + edges + ' connections added to Brainstorm';
+}
+
+// Preview as user types
+document.addEventListener('DOMContentLoaded', function() {
+  var inp = document.getElementById('universal-import-input');
+  if (inp) {
+    inp.addEventListener('input', function() {
+      var previewEl = document.getElementById('universal-import-preview');
+      var raw = this.value.trim();
+      if (!raw) { previewEl.style.display = 'none'; return; }
+      try {
+        var p = JSON.parse(raw);
+        var type = p.type || _detectImportType(p);
+        previewEl.textContent = 'Detected: ' + type.toUpperCase();
+        if (type === 'lab_session') {
+          var parts = [];
+          if (p.scenario) parts.push('scenario');
+          if (p.identity) parts.push((p.identity.length || 0) + ' identity blocks');
+          if (p.rules) parts.push((p.rules.length || 0) + ' rules');
+          if (p.nodes) parts.push((p.nodes.length || 0) + ' nodes');
+          previewEl.textContent += ' (' + parts.join(', ') + ')';
+        } else if (p.nodes) {
+          previewEl.textContent += ' — ' + (p.nodes.length||0) + ' nodes, ' + (p.edges||[]).length + ' edges, ' + (p.groups||[]).length + ' groups';
+        }
+        previewEl.style.color = 'var(--green)';
+        previewEl.style.display = 'block';
+      } catch(e) {
+        previewEl.textContent = 'Not valid JSON yet...';
+        previewEl.style.color = 'var(--txt3)';
+        previewEl.style.display = 'block';
+      }
+    });
+  }
+});
+
+
 // ══════════════════════════════════════════════════════════
 // SUPABASE DATA LAYER
 // ══════════════════════════════════════════════════════════
@@ -4913,4 +5227,36 @@ Keep titles under 5 words. Notes under 15 words. Be generous with nodes — bett
 </div>
 
 </body>
+
+
+<!-- UNIVERSAL IMPORT MODAL -->
+<div id="universal-import-overlay" onclick="if(event.target===this)closeUniversalImport()" style="display:none;position:fixed;inset:0;background:#000000c0;z-index:9999;align-items:center;justify-content:center">
+  <div style="background:var(--panel);border:1px solid var(--purple);border-radius:6px;padding:24px;width:600px;max-width:96vw;box-shadow:0 12px 48px #000c;display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="font-family:var(--font-display);font-size:13px;font-weight:700;color:var(--purple);letter-spacing:2px">&#x2B07; IMPORT FROM CLAUDE</div>
+      <div style="flex:1"></div>
+      <button onclick="closeUniversalImport()" style="background:none;border:none;color:var(--txt3);font-size:18px;cursor:pointer;line-height:1">&#x2715;</button>
+    </div>
+    <div style="font-size:9px;color:var(--txt3);line-height:1.7;background:var(--panel2);padding:10px;border-radius:3px">
+      Paste anything Claude gives you. The importer auto-detects the type and routes it to the right place.<br>
+      <span style="color:var(--accent)">scenario</span> &rarr; Sandbox &nbsp;&#xb7;&nbsp;
+      <span style="color:var(--purple)">identity/rules</span> &rarr; Lab &nbsp;&#xb7;&nbsp;
+      <span style="color:var(--green)">nodes</span> &rarr; Brainstorm &nbsp;&#xb7;&nbsp;
+      <span style="color:var(--amber)">lab_session</span> &rarr; Everything at once
+    </div>
+    <textarea id="universal-import-input" style="width:100%;height:200px;background:var(--panel2);border:1px solid var(--border2);color:var(--white);font-family:var(--font-ui);font-size:10px;padding:10px;border-radius:3px;outline:none;resize:vertical;line-height:1.6" placeholder='Paste JSON from Claude here...
+
+Examples:
+{"type":"scenario","stage":"Rally Iberia","mood":"frustrated","brake":"0.81",...}
+{"type":"identity","blocks":[{"category":"voice","title":"...","content":"..."}]}
+{"type":"nodes","nodes":[...],"edges":[...],"groups":[...]}
+{"type":"lab_session","scenario":{...},"identity":[...],"rules":[...]}'></textarea>
+    <div id="universal-import-err" style="font-size:9px;color:var(--red);display:none;padding:6px;background:#ff354810;border-radius:2px"></div>
+    <div id="universal-import-preview" style="font-size:9px;color:var(--txt3);display:none;padding:6px;background:var(--panel2);border-radius:2px;line-height:1.6"></div>
+    <div style="display:flex;gap:8px">
+      <button onclick="closeUniversalImport()" style="flex:1;padding:9px;background:var(--panel2);border:1px solid var(--border2);color:var(--txt);font-family:var(--font-ui);font-size:9px;cursor:pointer;border-radius:3px;letter-spacing:1px">CANCEL</button>
+      <button onclick="doUniversalImport()" style="flex:3;padding:9px;background:var(--purple);border:none;color:var(--bg);font-family:var(--font-ui);font-size:10px;font-weight:700;cursor:pointer;border-radius:3px;letter-spacing:2px">&#x2B07; IMPORT</button>
+    </div>
+  </div>
+</div>
 </html>
