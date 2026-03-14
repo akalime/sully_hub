@@ -3964,18 +3964,29 @@ async function labRunTest() {
 
 async function labCallClaude(prompt, temp) {
   try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        temperature: temp,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
+    // Call via Supabase Edge Function — key never touches browser
+    const { data: { session } } = await supa.auth.getSession();
+    const token = session?.access_token;
+    if (!token) return '[Claude: not logged in]';
+
+    const resp = await fetch(
+      'https://hmrnwvahkcoexjcxohel.supabase.co/functions/v1/sully-proxy',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token,
+        },
+        body: JSON.stringify({
+          prompt: prompt,
+          temperature: temp,
+          max_tokens: 1000,
+        })
+      }
+    );
     const data = await resp.json();
-    return data.content?.[0]?.text || '[No response]';
+    if (data.error) return '[Claude error: ' + data.error + ']';
+    return data.text || '[No response]';
   } catch(e) {
     return '[Claude error: ' + e.message + ']';
   }
