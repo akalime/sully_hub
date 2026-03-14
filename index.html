@@ -3845,16 +3845,7 @@ function labRenderSandbox() {
   html += '</div>';
   html += '</div>';
 
-  // Results area
-  html += '<div id="lab-results" class="lab-results-area" style="display:none">';
-  html += '<div class="lab-results-header">';
-  html += '<div class="lab-results-title">RESPONSE</div>';
-  html += '<div id="lab-rules-fired" class="lab-rules-fired"></div>';
-  html += '</div>';
-  html += '<div class="lab-results-grid">';
-  html += '<div class="lab-result-panel"><div class="lab-result-label" style="color:var(--accent)">⬡ CLAUDE</div><div id="lab-claude-out" class="lab-result-text">—</div><div class="lab-result-actions"><button class="lab-act-btn" onclick="labAnnotate(\'claude\')">ANNOTATE</button><button class="lab-act-btn" onclick="labCapture(\'claude\')">CAPTURE CORRECTION</button></div></div>';
-  html += '<div class="lab-result-panel"><div class="lab-result-label" style="color:var(--amber)">◈ GEMINI</div><div id="lab-gemini-out" class="lab-result-text">—</div><div class="lab-result-actions"><button class="lab-act-btn" onclick="labAnnotate(\'gemini\')">ANNOTATE</button><button class="lab-act-btn" onclick="labCapture(\'gemini\')">CAPTURE CORRECTION</button></div></div>';
-  html += '</div></div>';
+  // Results live in permanent div outside lab-content (see view-lab HTML)
 
   return html;
 }
