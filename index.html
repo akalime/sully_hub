@@ -1357,10 +1357,10 @@ function renderFeatures() {
               ${f.note ? `<div class="fi-note">${f.note}</div>` : ''}
             </div>
             ${isAdmin() ? `<div class="fi-actions">
-              <select class="fi-btn" style="width:80px" onchange="changeFeatureStatus(${gi},${fi},this.value)">
+              <select class="fi-btn" style="width:80px" data-fid="${f.id}" onchange="changeFeatureById(${f.id},this.value)">
                 ${['working','broken','partial','planned','retired'].map(s=>`<option value="${s}" ${f.status===s?'selected':''}>${labelMap[s]}</option>`).join('')}
               </select>
-              <button class="fi-btn" onclick="editFeature(${gi},${fi})">EDIT</button>
+              <button class="fi-btn" onclick="editFeatureById(${f.id})">EDIT</button>
             </div>` : ''}
           </div>`).join('')}
       </div>
@@ -1375,6 +1375,35 @@ function renderFeatures() {
 function toggleGroup(gi) {
   const el = document.getElementById('feat-group-' + gi);
   el.classList.toggle('open');
+}
+
+async function changeFeatureById(id, status) {
+  if (!isAdmin()) return;
+  // Find feature by id across all groups
+  let found = null;
+  for (const group of FEATURES) {
+    const f = group.items.find(function(i){ return i.id === id; });
+    if (f) { found = f; break; }
+  }
+  if (!found) { showToast('Feature not found', 'error'); return; }
+  found.status = status;
+  renderFeatures();
+  renderDashboard();
+  if (found.id) {
+    const ok = await dbUpdateFeature(found.id, found);
+  }
+}
+
+function editFeatureById(id) {
+  if (!isAdmin()) return;
+  let found = null;
+  let foundGi = -1, foundFi = -1;
+  for (let gi = 0; gi < FEATURES.length; gi++) {
+    const fi = FEATURES[gi].items.findIndex(function(i){ return i.id === id; });
+    if (fi > -1) { found = FEATURES[gi].items[fi]; foundGi = gi; foundFi = fi; break; }
+  }
+  if (!found) return;
+  editFeature(foundGi, foundFi);
 }
 
 async function changeFeatureStatus(gi, fi, status) {
