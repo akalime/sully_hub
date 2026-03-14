@@ -4632,7 +4632,7 @@ function closeUniversalImport() {
   document.getElementById('universal-import-overlay').style.display = 'none';
 }
 
-function doUniversalImport() {
+async function doUniversalImport() {
   var raw = document.getElementById('universal-import-input').value.trim();
   var errEl = document.getElementById('universal-import-err');
   var previewEl = document.getElementById('universal-import-preview');
@@ -4662,6 +4662,9 @@ function doUniversalImport() {
       break;
     case 'rules':
       results.push(_importRules(parsed));
+      break;
+    case 'features':
+      results.push(await _importFeatures(parsed));
       break;
     case 'nodes':
     case 'brainstorm':
@@ -4703,6 +4706,7 @@ function doUniversalImport() {
 }
 
 function _detectImportType(obj) {
+  if (obj.features && Array.isArray(obj.features)) return 'features';
   if (obj.stage || obj.brake || obj.mood) return 'scenario';
   if (obj.blocks || (obj.identity && Array.isArray(obj.identity))) return 'identity';
   if (obj.nodes || obj.groups || obj.edges) return 'nodes';
@@ -4792,6 +4796,32 @@ async function _importRulesList(rules) {
   nav('lab');
   setTimeout(function(){ labSwitchTab('rules'); labRenderActiveTab(); labRenderMemoryBar(); }, 100);
   return added + ' rules added';
+}
+
+async function _importFeatures(parsed) {
+  var rows = parsed.features || parsed.items || (Array.isArray(parsed) ? parsed : null);
+  if (!rows || !rows.length) return '0 features';
+  var added = 0;
+  for (var i = 0; i < rows.length; i++) {
+    var r = rows[i];
+    var res = await supa.from('hub_features').insert({
+      group_name: r.group_name || r.group || 'General',
+      name: r.name || r.title || 'Unnamed',
+      status: r.status || 'planned',
+      note: r.note || ''
+    }).select().single();
+    if (!res.error) {
+      // Add to local FEATURES array
+      var group = FEATURES.find(function(g){ return g.group === (r.group_name || r.group || 'General'); });
+      if (!group) { group = {group: r.group_name || r.group || 'General', items:[]}; FEATURES.push(group); }
+      group.items.push({id: res.data.id, name: res.data.name, status: res.data.status, note: res.data.note||''});
+      added++;
+    }
+  }
+  renderFeatures();
+  renderDashboard();
+  nav('features');
+  return added + ' features added';
 }
 
 function _importBrainstorm(parsed) {
