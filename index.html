@@ -663,7 +663,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
 .lab-runs-header { display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;padding:7px 12px;font-size:7px;color:var(--txt3);letter-spacing:1px;border-bottom:1px solid var(--border); }
 .lab-runs-row { display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;padding:6px 12px;font-size:9px;color:var(--txt);border-bottom:1px solid var(--border); }
 .lab-runs-row:last-child { border-bottom:none; }
-.lab-sandbox-grid { display:grid;grid-template-columns:280px 1fr;gap:16px;margin-bottom:16px; }
+.lab-sandbox-grid { display:grid;grid-template-columns:240px 240px 1fr;gap:12px;margin-bottom:16px; }
 .lab-sandbox-left { display:flex;flex-direction:column;gap:0; }
 .lab-sandbox-right { background:var(--panel2);border-radius:4px;padding:12px;border:1px solid var(--border); }
 .lab-sand-section { background:var(--panel2);border-radius:4px;padding:12px;margin-bottom:8px;border:1px solid var(--border); }
@@ -3798,54 +3798,156 @@ function labMemRow(label, value, color) {
 }
 
 // ── Sandbox Tab ───────────────────────────────────────────
-function labRenderSandbox() {
-  var html = '<div class="lab-section-header"><div><div class="lab-section-title">TEST SANDBOX</div><div class="lab-section-sub">Build a scenario, run it through Sully, see Claude and Gemini side by side. Annotate the response.</div></div></div>';
+const LAB_PRESETS = {
+  blank:        { label:'— Blank —', stage:'Rally Iberia — Montclar', mode:'training', mood:'neutral', brake:'', throttle:'', crashes:'', time:'', s1:'', s2:'', s3:'', s4:'', s5:'', smooth:'', steer:'', lifts:'', corrections:'', tyre_fl:'', tyre_fr:'', tyre_bl:'', tyre_br:'', top_speed:'', dist:'', overlap:'', prev_time:'', sessions:'', form:'', weaknesses:'', strengths:'', last_fix:'', extra:'' },
+  good_run:     { label:'✅ Good Run', stage:'Rally Iberia — Montclar', mode:'training', mood:'confident', brake:'0.62', throttle:'0.74', crashes:'0', time:'498.2', s1:'94.1', s2:'101.3', s3:'96.8', s4:'103.2', s5:'102.8', smooth:'84', steer:'38', lifts:'1', corrections:'8', tyre_fl:'0.9', tyre_fr:'0.88', tyre_bl:'0.91', tyre_br:'0.87', top_speed:'168', dist:'12400', overlap:'3', prev_time:'521.4', sessions:'14', form:'7.2', weaknesses:'trail braking hairpins', strengths:'throttle exit, sector 1 consistency', last_fix:'brake pressure at 1606m', extra:'Personal best. Brake pressure down 9% vs last run.' },
+  fish_brain:   { label:'🐟 Fish Brain Test', stage:'Rally Iberia — Montclar', mode:'training', mood:'neutral', brake:'0.81', throttle:'0.68', crashes:'0', time:'521.4', s1:'98.2', s2:'112.4', s3:'89.1', s4:'105.6', s5:'116.1', smooth:'72', steer:'44', lifts:'3', corrections:'12', tyre_fl:'0.82', tyre_fr:'0.79', tyre_bl:'0.85', tyre_br:'0.81', top_speed:'162', dist:'12400', overlap:'8', prev_time:'519.8', sessions:'14', form:'7.0', weaknesses:'braking, trail brake sector 2', strengths:'throttle exit', last_fix:'brake pressure 1606m — said this last 3 runs', extra:'IMPORTANT: braking was flagged last 3 runs already. Sully must NOT repeat same advice. Find something new.' },
+  crash_run:    { label:'💥 Crash Run', stage:'Rally Estonia — Kanepi', mode:'race', mood:'frustrated', brake:'0.91', throttle:'0.61', crashes:'3', time:'612.8', s1:'108.2', s2:'134.6', s3:'98.1', s4:'156.3', s5:'115.6', smooth:'54', steer:'72', lifts:'8', corrections:'31', tyre_fl:'0.52', tyre_fr:'0.48', tyre_bl:'0.61', tyre_br:'0.55', top_speed:'144', dist:'9800', overlap:'18', prev_time:'558.2', sessions:'14', form:'6.1', weaknesses:'high speed entries, braking', strengths:'low speed corners', last_fix:'commitment on fast entries', extra:'3 crashes. Biggest impact 8.4G at 1606m. Driver is frustrated after the run.' },
+  first_session:{ label:'🆕 First Session', stage:'Rally Monte Carlo — La Maïris', mode:'training', mood:'neutral', brake:'0.88', throttle:'0.55', crashes:'1', time:'587.3', s1:'112.4', s2:'118.6', s3:'108.9', s4:'122.1', s5:'125.3', smooth:'61', steer:'58', lifts:'6', corrections:'22', tyre_fl:'0.95', tyre_fr:'0.94', tyre_bl:'0.96', tyre_br:'0.93', top_speed:'141', dist:'10200', overlap:'12', prev_time:'0', sessions:'1', form:'5.0', weaknesses:'', strengths:'', last_fix:'', extra:'Very first session ever. No history, no weaknesses on file. Sully is meeting this driver for the first time.' },
+  improvement:  { label:'📈 Big Improvement', stage:'Rally Finland — Ouninpohja', mode:'training', mood:'confident', brake:'0.68', throttle:'0.79', crashes:'0', time:'312.4', s1:'58.2', s2:'63.1', s3:'61.8', s4:'65.4', s5:'63.9', smooth:'88', steer:'32', lifts:'1', corrections:'6', tyre_fl:'0.88', tyre_fr:'0.86', tyre_bl:'0.89', tyre_br:'0.87', top_speed:'184', dist:'7200', overlap:'2', prev_time:'334.8', sessions:'18', form:'8.1', weaknesses:'was: trail braking', strengths:'throttle, consistency, braking now improving', last_fix:'trail brake apex hold', extra:'22 seconds faster than previous best. Brake improved 18% over 3 sessions. Biggest improvement to date.' },
+  off_topic:    { label:'🚫 Off-Topic Test', stage:'', mode:'training', mood:'neutral', brake:'', throttle:'', crashes:'', time:'', s1:'', s2:'', s3:'', s4:'', s5:'', smooth:'', steer:'', lifts:'', corrections:'', tyre_fl:'', tyre_fr:'', tyre_bl:'', tyre_br:'', top_speed:'', dist:'', overlap:'', prev_time:'', sessions:'14', form:'7.0', weaknesses:'braking', strengths:'throttle', last_fix:'brake at 1606m', extra:'USER WILL ASK SULLY ABOUT SOMETHING COMPLETELY UNRELATED TO RALLY. Test if Sully stays in character and redirects.' },
+  mental:       { label:'🧠 Mental Coach Mode', stage:'Rally Iberia — Montclar', mode:'mental', mood:'frustrated', brake:'0.84', throttle:'0.65', crashes:'2', time:'541.2', s1:'102.4', s2:'108.6', s3:'118.9', s4:'112.1', s5:'99.2', smooth:'64', steer:'61', lifts:'5', corrections:'24', tyre_fl:'0.74', tyre_fr:'0.71', tyre_bl:'0.78', tyre_br:'0.73', top_speed:'158', dist:'12400', overlap:'11', prev_time:'532.8', sessions:'22', form:'6.8', weaknesses:'consistency under pressure, overthinking fast entries', strengths:'technical corners, low speed', last_fix:'commitment at km 8.2', extra:'Driver has crashed at same corner 4 sessions in a row. Clear psychological pattern. Mental coach mode active.' },
+  qualifying:   { label:'⏱ Qualifying Mode', stage:'Rally Iberia — Montclar', mode:'qualifying', mood:'confident', brake:'0.71', throttle:'0.77', crashes:'0', time:'487.6', s1:'91.2', s2:'98.4', s3:'94.1', s4:'101.3', s5:'102.6', smooth:'81', steer:'41', lifts:'2', corrections:'9', tyre_fl:'0.91', tyre_fr:'0.89', tyre_bl:'0.92', tyre_br:'0.90', top_speed:'171', dist:'12400', overlap:'4', prev_time:'498.2', sessions:'16', form:'7.8', weaknesses:'trail brake s2', strengths:'throttle, braking improving', last_fix:'trail brake apex', extra:'Qualifying run. Single shot at best time. Every tenth counts. No room for error.' },
+  tyre_wear:    { label:'🔴 Critical Tyre Wear', stage:'Rally Portugal — Lousa', mode:'training', mood:'neutral', brake:'0.79', throttle:'0.69', crashes:'0', time:'534.8', s1:'99.8', s2:'108.2', s3:'101.4', s4:'112.6', s5:'112.8', smooth:'71', steer:'48', lifts:'4', corrections:'16', tyre_fl:'0.21', tyre_fr:'0.18', tyre_bl:'0.34', tyre_br:'0.29', top_speed:'159', dist:'11600', overlap:'9', prev_time:'528.4', sessions:'12', form:'7.1', weaknesses:'tyre management', strengths:'sector 1', last_fix:'smooth inputs on gravel', extra:'Front tyres critically worn. Rear still ok. Setup or driving style causing asymmetric wear.' },
+  setup:        { label:'🔧 Setup Mode', stage:'Rally Iberia — Montclar', mode:'setup', mood:'neutral', brake:'0.76', throttle:'0.71', crashes:'0', time:'514.6', s1:'96.8', s2:'104.2', s3:'98.4', s4:'108.9', s5:'106.3', smooth:'76', steer:'42', lifts:'3', corrections:'14', tyre_fl:'0.84', tyre_fr:'0.82', tyre_bl:'0.86', tyre_br:'0.83', top_speed:'164', dist:'12400', overlap:'6', prev_time:'521.4', sessions:'15', form:'7.3', weaknesses:'rear stability high speed', strengths:'throttle, braking', last_fix:'diff settings', extra:'Driver reporting understeer on fast entries. Asking about setup changes for better rotation.' },
+};
 
-  // Scenario builder
+function labLoadPreset(key) {
+  const p = LAB_PRESETS[key];
+  if (!p) return;
+  const set = function(id, val) { const el = document.getElementById(id); if (el) el.value = val || ''; };
+  set('sand-stage', p.stage);
+  set('sand-mode', p.mode);
+  set('sand-mood', p.mood);
+  set('sand-brake', p.brake);
+  set('sand-throttle', p.throttle);
+  set('sand-crashes', p.crashes);
+  set('sand-time', p.time);
+  set('sand-s1', p.s1); set('sand-s2', p.s2); set('sand-s3', p.s3);
+  set('sand-s4', p.s4); set('sand-s5', p.s5);
+  set('sand-smooth', p.smooth); set('sand-steer', p.steer);
+  set('sand-lifts', p.lifts); set('sand-corrections', p.corrections);
+  set('sand-tyre-fl', p.tyre_fl); set('sand-tyre-fr', p.tyre_fr);
+  set('sand-tyre-bl', p.tyre_bl); set('sand-tyre-br', p.tyre_br);
+  set('sand-top-speed', p.top_speed); set('sand-dist', p.dist);
+  set('sand-overlap', p.overlap); set('sand-prev-time', p.prev_time);
+  set('sand-sessions', p.sessions); set('sand-form', p.form);
+  set('sand-weaknesses', p.weaknesses); set('sand-strengths', p.strengths);
+  set('sand-last-fix', p.last_fix); set('sand-extra', p.extra);
+}
+
+function labRenderSandbox() {
+  var html = '<div class="lab-section-header"><div><div class="lab-section-title">TEST SANDBOX</div><div class="lab-section-sub">Build any scenario. Control every variable Sully sees. Test Claude and Gemini side by side.</div></div></div>';
+
+  // Presets row
+  html += '<div class="lab-presets-row">';
+  html += '<div class="lbl" style="margin-bottom:6px">PRESETS</div>';
+  html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">';
+  Object.keys(LAB_PRESETS).forEach(function(key) {
+    html += '<button class="lab-btn" onclick="labLoadPreset(\'' + key + '\')">' + LAB_PRESETS[key].label + '</button>';
+  });
+  html += '</div></div>';
+
   html += '<div class="lab-sandbox-grid">';
 
-  // Left — scenario config
+  // ── LEFT COLUMN ──
   html += '<div class="lab-sandbox-left">';
-  html += '<div class="lab-sand-section"><div class="lab-sand-title">SCENARIO</div>';
+
+  // Stage & context
+  html += '<div class="lab-sand-section"><div class="lab-sand-title">STAGE & CONTEXT</div>';
   html += '<div class="lab-form-row"><label>Stage</label><input id="sand-stage" value="Rally Iberia — Montclar" class="lab-input"></div>';
-  html += '<div class="lab-form-row"><label>Mode</label><select id="sand-mode" class="lab-input"><option>training</option><option>race</option><option>qualifying</option><option>consistency</option><option>mental</option></select></div>';
-  html += '<div class="lab-form-row"><label>Driver mood</label><select id="sand-mood" class="lab-input"><option value="neutral">Neutral</option><option value="frustrated">Frustrated</option><option value="confident">Confident</option><option value="tired">Tired</option></select></div>';
+  html += '<div class="lab-form-row"><label>Mode</label><select id="sand-mode" class="lab-input"><option>training</option><option>race</option><option>qualifying</option><option>consistency</option><option>mental</option><option>setup</option></select></div>';
+  html += '<div class="lab-form-row"><label>Driver mood</label><select id="sand-mood" class="lab-input"><option value="neutral">Neutral</option><option value="confident">Confident</option><option value="frustrated">Frustrated</option><option value="tired">Tired</option><option value="angry">Angry</option></select></div>';
   html += '</div>';
 
-  html += '<div class="lab-sand-section"><div class="lab-sand-title">USE REAL DATA</div>';
-  html += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">';
-  html += '<input type="checkbox" id="sand-use-memory" checked style="accent-color:var(--accent)"> <label style="font-size:9px;color:var(--txt2)">Inject sully_memory</label></div>';
-  html += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">';
-  html += '<input type="checkbox" id="sand-use-runs" checked style="accent-color:var(--accent)"> <label style="font-size:9px;color:var(--txt2)">Inject last 3 runs</label></div>';
-  html += '<div style="display:flex;gap:8px;align-items:center">';
-  html += '<input type="checkbox" id="sand-use-debriefs" style="accent-color:var(--accent)"> <label style="font-size:9px;color:var(--txt2)">Inject last debrief</label></div>';
+  // Driver history
+  html += '<div class="lab-sand-section"><div class="lab-sand-title">DRIVER HISTORY</div>';
+  html += '<div class="lab-form-row"><label>Sessions</label><input id="sand-sessions" placeholder="14" class="lab-input lab-input-sm"></div>';
+  html += '<div class="lab-form-row"><label>Form score</label><input id="sand-form" placeholder="7.2" class="lab-input lab-input-sm"><span style="font-size:8px;color:var(--txt3);margin-left:4px">/10</span></div>';
+  html += '<div class="lab-form-row"><label>Weaknesses</label><input id="sand-weaknesses" placeholder="trail braking, hairpins" class="lab-input"></div>';
+  html += '<div class="lab-form-row"><label>Strengths</label><input id="sand-strengths" placeholder="throttle exit, sector 1" class="lab-input"></div>';
+  html += '<div class="lab-form-row"><label>Last fix given</label><input id="sand-last-fix" placeholder="brake pressure at 1606m" class="lab-input"></div>';
+  html += '<div class="lab-form-row"><label>Prev run time</label><input id="sand-prev-time" placeholder="521.4" class="lab-input lab-input-sm"><span style="font-size:8px;color:var(--txt3);margin-left:4px">s</span></div>';
   html += '</div>';
 
-  html += '<div class="lab-sand-section"><div class="lab-sand-title">FAKE METRICS (override)</div>';
-  html += '<div class="lab-form-row"><label>Avg brake</label><input id="sand-brake" placeholder="0.74" class="lab-input lab-input-sm"></div>';
-  html += '<div class="lab-form-row"><label>Avg throttle</label><input id="sand-throttle" placeholder="0.68" class="lab-input lab-input-sm"></div>';
-  html += '<div class="lab-form-row"><label>Crash count</label><input id="sand-crashes" placeholder="0" class="lab-input lab-input-sm"></div>';
-  html += '<div class="lab-form-row"><label>Stage time</label><input id="sand-time" placeholder="521.4" class="lab-input lab-input-sm"></div>';
+  // Stage metrics
+  html += '<div class="lab-sand-section"><div class="lab-sand-title">THIS RUN — OVERVIEW</div>';
+  html += '<div class="lab-form-row"><label>Stage time</label><input id="sand-time" placeholder="498.2" class="lab-input lab-input-sm"><span style="font-size:8px;color:var(--txt3);margin-left:4px">s</span></div>';
+  html += '<div class="lab-form-row"><label>Top speed</label><input id="sand-top-speed" placeholder="168" class="lab-input lab-input-sm"><span style="font-size:8px;color:var(--txt3);margin-left:4px">kph</span></div>';
+  html += '<div class="lab-form-row"><label>Distance</label><input id="sand-dist" placeholder="12400" class="lab-input lab-input-sm"><span style="font-size:8px;color:var(--txt3);margin-left:4px">m</span></div>';
+  html += '<div class="lab-form-row"><label>Crashes</label><input id="sand-crashes" placeholder="0" class="lab-input lab-input-sm"></div>';
   html += '</div>';
 
+  // Inputs
+  html += '<div class="lab-sand-section"><div class="lab-sand-title">DRIVER INPUTS</div>';
+  html += '<div class="lab-form-row"><label>Avg brake</label><input id="sand-brake" placeholder="0.74" class="lab-input lab-input-sm"><span style="font-size:8px;color:var(--txt3);margin-left:4px">0-1</span></div>';
+  html += '<div class="lab-form-row"><label>Avg throttle</label><input id="sand-throttle" placeholder="0.68" class="lab-input lab-input-sm"><span style="font-size:8px;color:var(--txt3);margin-left:4px">0-1</span></div>';
+  html += '<div class="lab-form-row"><label>Pedal overlap</label><input id="sand-overlap" placeholder="8" class="lab-input lab-input-sm"><span style="font-size:8px;color:var(--txt3);margin-left:4px">frames</span></div>';
+  html += '<div class="lab-form-row"><label>Hard lifts</label><input id="sand-lifts" placeholder="3" class="lab-input lab-input-sm"></div>';
+  html += '</div>';
+
+  html += '</div>';
+
+  // ── MIDDLE COLUMN ──
+  html += '<div class="lab-sandbox-left">';
+
+  // Sector splits
+  html += '<div class="lab-sand-section"><div class="lab-sand-title">SECTOR SPLITS</div>';
+  html += '<div class="lab-form-row"><label>Sector 1</label><input id="sand-s1" placeholder="94.1" class="lab-input lab-input-sm"><span style="font-size:8px;color:var(--txt3);margin-left:4px">s</span></div>';
+  html += '<div class="lab-form-row"><label>Sector 2</label><input id="sand-s2" placeholder="101.3" class="lab-input lab-input-sm"><span style="font-size:8px;color:var(--txt3);margin-left:4px">s</span></div>';
+  html += '<div class="lab-form-row"><label>Sector 3</label><input id="sand-s3" placeholder="96.8" class="lab-input lab-input-sm"><span style="font-size:8px;color:var(--txt3);margin-left:4px">s</span></div>';
+  html += '<div class="lab-form-row"><label>Sector 4</label><input id="sand-s4" placeholder="103.2" class="lab-input lab-input-sm"><span style="font-size:8px;color:var(--txt3);margin-left:4px">s</span></div>';
+  html += '<div class="lab-form-row"><label>Sector 5</label><input id="sand-s5" placeholder="102.8" class="lab-input lab-input-sm"><span style="font-size:8px;color:var(--txt3);margin-left:4px">s</span></div>';
+  html += '</div>';
+
+  // Quality metrics
+  html += '<div class="lab-sand-section"><div class="lab-sand-title">QUALITY METRICS</div>';
+  html += '<div class="lab-form-row"><label>Throttle smooth</label><input id="sand-smooth" placeholder="72" class="lab-input lab-input-sm"><span style="font-size:8px;color:var(--txt3);margin-left:4px">/100</span></div>';
+  html += '<div class="lab-form-row"><label>Steering agg</label><input id="sand-steer" placeholder="45" class="lab-input lab-input-sm"><span style="font-size:8px;color:var(--txt3);margin-left:4px">/100</span></div>';
+  html += '<div class="lab-form-row"><label>Corrections</label><input id="sand-corrections" placeholder="12" class="lab-input lab-input-sm"></div>';
+  html += '</div>';
+
+  // Tyre state
+  html += '<div class="lab-sand-section"><div class="lab-sand-title">TYRE STATE (0-1)</div>';
+  html += '<div class="lab-form-row"><label>Front Left</label><input id="sand-tyre-fl" placeholder="0.88" class="lab-input lab-input-sm"></div>';
+  html += '<div class="lab-form-row"><label>Front Right</label><input id="sand-tyre-fr" placeholder="0.86" class="lab-input lab-input-sm"></div>';
+  html += '<div class="lab-form-row"><label>Rear Left</label><input id="sand-tyre-bl" placeholder="0.89" class="lab-input lab-input-sm"></div>';
+  html += '<div class="lab-form-row"><label>Rear Right</label><input id="sand-tyre-br" placeholder="0.87" class="lab-input lab-input-sm"></div>';
+  html += '</div>';
+
+  // Data toggles
+  html += '<div class="lab-sand-section"><div class="lab-sand-title">INJECT REAL DATA</div>';
+  html += '<div style="display:flex;flex-direction:column;gap:8px">';
+  html += '<label style="display:flex;gap:8px;align-items:center;font-size:9px;color:var(--txt2)"><input type="checkbox" id="sand-use-memory" checked style="accent-color:var(--accent)"> Inject sully_memory</label>';
+  html += '<label style="display:flex;gap:8px;align-items:center;font-size:9px;color:var(--txt2)"><input type="checkbox" id="sand-use-runs" checked style="accent-color:var(--accent)"> Inject last 3 runs</label>';
+  html += '<label style="display:flex;gap:8px;align-items:center;font-size:9px;color:var(--txt2)"><input type="checkbox" id="sand-use-debriefs" style="accent-color:var(--accent)"> Inject last debrief</label>';
+  html += '<label style="display:flex;gap:8px;align-items:center;font-size:9px;color:var(--txt2)"><input type="checkbox" id="sand-use-identity" checked style="accent-color:var(--accent)"> Inject identity blocks</label>';
+  html += '<label style="display:flex;gap:8px;align-items:center;font-size:9px;color:var(--txt2)"><input type="checkbox" id="sand-use-rules" checked style="accent-color:var(--accent)"> Inject rules</label>';
+  html += '</div></div>';
+
+  // Temperature
   html += '<div class="lab-sand-section"><div class="lab-sand-title">TEMPERATURE</div>';
   html += '<div style="display:flex;align-items:center;gap:10px">';
   html += '<input type="range" id="sand-temp" min="0" max="1" step="0.05" value="0.7" style="flex:1;accent-color:var(--accent)" oninput="document.getElementById(\'sand-temp-val\').textContent=this.value">';
   html += '<span id="sand-temp-val" style="font-size:10px;color:var(--accent);width:30px">0.7</span>';
-  html += '</div><div style="font-size:8px;color:var(--txt3);margin-top:4px">Lower = more consistent · Higher = more creative</div>';
+  html += '</div><div style="font-size:8px;color:var(--txt3);margin-top:4px">Lower = consistent · Higher = creative</div>';
   html += '</div>';
 
   html += '<button class="lab-btn lab-btn-run" onclick="labRunTest()" id="lab-run-btn">▶ RUN TEST</button>';
   html += '</div>';
 
-  // Right — prompt preview
-  html += '<div class="lab-sandbox-right">';
-  html += '<div class="lab-sand-title" style="margin-bottom:8px">PROMPT PREVIEW</div>';
-  html += '<div id="sand-prompt-preview" class="lab-prompt-preview">Click RUN TEST to see the prompt that will be sent to Sully...</div>';
-  html += '</div>';
+  // ── RIGHT COLUMN — prompt preview + extra context ──
+  html += '<div class="lab-sandbox-right" style="display:flex;flex-direction:column;gap:8px">';
+  html += '<div class="lab-sand-title">EXTRA CONTEXT (free text)</div>';
+  html += '<textarea id="sand-extra" class="lab-input" style="height:80px;resize:vertical" placeholder="Add any extra context for this scenario — e.g. driver crashed at same corner 3 times, this is qualifying, etc."></textarea>';
+  html += '<div class="lab-sand-title" style="margin-top:8px">PROMPT PREVIEW</div>';
+  html += '<div id="sand-prompt-preview" class="lab-prompt-preview" style="flex:1">Hit RUN TEST to see the full prompt sent to Sully...</div>';
   html += '</div>';
 
-  // Results live in permanent div outside lab-content (see view-lab HTML)
+  html += '</div>';
+
+  // Results placeholder
+  html += '<div id="lab-results-placeholder"></div>';
 
   return html;
 }
@@ -3929,19 +4031,99 @@ function labBuildPrompt() {
     prompt += LAB.debriefs[0].debrief_text + '\n\n';
   }
 
-  // 6. Current run metrics
+  // 6. Driver history (from sandbox fields, override memory if filled)
+  const sessions   = document.getElementById('sand-sessions')?.value;
+  const form       = document.getElementById('sand-form')?.value;
+  const weaknesses = document.getElementById('sand-weaknesses')?.value;
+  const strengths  = document.getElementById('sand-strengths')?.value;
+  const lastFix    = document.getElementById('sand-last-fix')?.value;
+  const prevTime   = document.getElementById('sand-prev-time')?.value;
+
+  if (sessions || form || weaknesses || strengths || lastFix) {
+    prompt += '=== DRIVER HISTORY ===\n';
+    if (sessions) prompt += 'Sessions: ' + sessions + '\n';
+    if (form)     prompt += 'Form score: ' + form + '/10\n';
+    if (weaknesses) prompt += 'Known weaknesses: ' + weaknesses + '\n';
+    if (strengths)  prompt += 'Known strengths: ' + strengths + '\n';
+    if (lastFix)    prompt += 'Last fix already given: ' + lastFix + ' — DO NOT repeat this unless data confirms still occurring\n';
+    prompt += '\n';
+  }
+
+  // 7. Current run metrics
+  const topSpeed = document.getElementById('sand-top-speed')?.value;
+  const dist     = document.getElementById('sand-dist')?.value;
+  const overlap  = document.getElementById('sand-overlap')?.value;
+
   prompt += '=== THIS RUN ===\n';
   prompt += 'Stage: ' + stage + '\n';
   prompt += 'Mode: ' + mode + '\n';
   prompt += 'Driver mood: ' + mood + '\n';
+  if (time)     prompt += 'Stage time: ' + time + 's\n';
+  if (prevTime && parseFloat(prevTime) > 0) {
+    var delta = parseFloat(time||0) - parseFloat(prevTime);
+    var dir = delta > 0 ? '+' + delta.toFixed(1) + 's slower' : Math.abs(delta).toFixed(1) + 's faster';
+    prompt += 'vs previous run: ' + dir + ' (prev: ' + prevTime + 's)\n';
+  }
+  if (topSpeed) prompt += 'Top speed: ' + topSpeed + 'kph\n';
+  if (dist)     prompt += 'Stage distance: ' + dist + 'm\n';
   if (brake)    prompt += 'Avg brake pressure: ' + brake + '\n';
   if (throttle) prompt += 'Avg throttle: ' + throttle + '\n';
   if (crashes)  prompt += 'Crash count: ' + crashes + '\n';
-  if (time)     prompt += 'Stage time: ' + time + 's\n';
+  if (overlap)  prompt += 'Pedal overlap frames: ' + overlap + '\n';
   prompt += '\n';
 
+  // 8. Sector splits
+  var sectors = ['s1','s2','s3','s4','s5'].map(function(id){ return document.getElementById('sand-'+id)?.value; });
+  if (sectors.some(function(s){ return s; })) {
+    prompt += '=== SECTOR SPLITS ===\n';
+    sectors.forEach(function(s, i) {
+      if (s) prompt += 'S' + (i+1) + ': ' + s + 's\n';
+    });
+    // Flag slowest
+    var filled = sectors.map(function(s,i){ return {t:parseFloat(s||0),i:i}; }).filter(function(x){ return x.t>0; });
+    if (filled.length > 1) {
+      var worst = filled.reduce(function(a,b){ return a.t>b.t?a:b; });
+      prompt += 'Slowest sector: S' + (worst.i+1) + '\n';
+    }
+    prompt += '\n';
+  }
+
+  // 9. Quality metrics
+  const smooth      = document.getElementById('sand-smooth')?.value;
+  const steer       = document.getElementById('sand-steer')?.value;
+  const lifts       = document.getElementById('sand-lifts')?.value;
+  const corrections = document.getElementById('sand-corrections')?.value;
+  if (smooth || steer || lifts || corrections) {
+    prompt += '=== DRIVER QUALITY METRICS ===\n';
+    if (smooth)      prompt += 'Throttle smoothness: ' + smooth + '/100\n';
+    if (steer)       prompt += 'Steering aggression: ' + steer + '/100\n';
+    if (lifts)       prompt += 'Hard throttle lifts: ' + lifts + '\n';
+    if (corrections) prompt += 'Steering corrections: ' + corrections + '\n';
+    prompt += '\n';
+  }
+
+  // 10. Tyre state
+  var tyres = {FL: document.getElementById('sand-tyre-fl')?.value, FR: document.getElementById('sand-tyre-fr')?.value, BL: document.getElementById('sand-tyre-bl')?.value, BR: document.getElementById('sand-tyre-br')?.value};
+  if (Object.values(tyres).some(function(v){ return v; })) {
+    prompt += '=== TYRE STATE ===\n';
+    Object.keys(tyres).forEach(function(corner) {
+      if (tyres[corner]) {
+        var val = parseFloat(tyres[corner]);
+        var cond = val > 0.7 ? 'GOOD' : val > 0.4 ? 'WORN' : 'CRITICAL';
+        prompt += corner + ': ' + cond + ' (' + (val*100).toFixed(0) + '%)\n';
+      }
+    });
+    prompt += '\n';
+  }
+
+  // 11. Extra context
+  const extra = document.getElementById('sand-extra')?.value;
+  if (extra) {
+    prompt += '=== SCENARIO NOTES ===\n' + extra + '\n\n';
+  }
+
   prompt += '=== INSTRUCTION ===\n';
-  prompt += 'Deliver a post-stage coaching debrief as Sully. Follow all identity and rules above exactly. Be specific. Reference data. Sound human.';
+  prompt += 'Deliver a post-stage coaching debrief as Sully. Follow all identity and rules above exactly. Be specific, reference exact data points. Sound human. No bullet points. No lists.';
 
   return prompt;
 }
