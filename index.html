@@ -604,6 +604,91 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
 #export-content pre { font-family:var(--font-ui);font-size:10px;color:var(--txt);line-height:1.6;white-space:pre-wrap;word-break:break-word; }
 #export-footer { padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end; }
 
+
+/* ── SULLY LAB ── */
+#view-lab { flex-direction:column; overflow:hidden; }
+#lab-loading { position:absolute;inset:0;background:var(--bg);display:none;align-items:center;justify-content:center;font-size:11px;color:var(--accent);letter-spacing:3px;z-index:10; }
+#lab-memory-bar { display:flex;align-items:center;gap:0;padding:6px 16px;background:var(--panel2);border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto;flex-wrap:nowrap; }
+.lmb-item { display:flex;align-items:center;gap:5px;white-space:nowrap; }
+.lmb-label { font-size:7px;color:var(--txt3);letter-spacing:1px; }
+.lmb-val { font-size:9px;color:var(--white); }
+.lmb-sep { color:var(--border2);margin:0 10px; }
+#lab-tabs { display:flex;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--panel); }
+.lab-tab-btn { padding:9px 18px;font-size:9px;letter-spacing:1px;cursor:pointer;font-family:var(--font-ui);color:var(--txt3);border:none;border-bottom:2px solid transparent;background:none;transition:all .1s; }
+.lab-tab-btn:hover { color:var(--txt); }
+.lab-tab-btn.active { color:var(--purple);border-bottom-color:var(--purple); }
+#lab-content { flex:1;overflow-y:auto;padding:20px;-webkit-overflow-scrolling:touch; }
+.lab-section-header { display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;gap:16px; }
+.lab-section-title { font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--white);letter-spacing:2px; }
+.lab-section-sub { font-size:9px;color:var(--txt3);margin-top:3px;letter-spacing:1px; }
+.lab-btn { background:var(--panel2);border:1px solid var(--border2);color:var(--txt);font-family:var(--font-ui);font-size:9px;padding:6px 14px;cursor:pointer;border-radius:2px;letter-spacing:1px;transition:all .1s; }
+.lab-btn:hover { border-color:var(--border2);color:var(--white); }
+.lab-btn-accent { border-color:var(--purple);color:var(--purple); }
+.lab-btn-accent:hover { background:var(--purple);color:var(--bg); }
+.lab-btn-run { width:100%;padding:10px;background:var(--purple);border:none;color:var(--bg);font-family:var(--font-ui);font-size:10px;font-weight:700;cursor:pointer;border-radius:3px;letter-spacing:2px;margin-top:12px;transition:background .1s; }
+.lab-btn-run:hover { background:#c084fc; }
+.lab-cat-section { margin-bottom:20px; }
+.lab-cat-header { display:flex;align-items:flex-start;justify-content:space-between;padding:8px 12px;background:var(--panel2);border-radius:3px;border-left:3px solid var(--accent);margin-bottom:8px; }
+.lab-cat-title { font-size:10px;font-weight:700;letter-spacing:2px;margin-bottom:2px; }
+.lab-cat-desc { font-size:8px;color:var(--txt3);letter-spacing:1px; }
+.lab-block { background:var(--panel);border:1px solid var(--border2);border-radius:4px;margin-bottom:8px;overflow:hidden;transition:opacity .15s; }
+.lab-block.disabled { opacity:0.4; }
+.lab-block-header { display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border); }
+.lab-toggle { cursor:pointer;color:var(--accent);font-size:12px;flex-shrink:0; }
+.lab-block-title { font-size:10px;color:var(--white);flex:1; }
+.lab-block-priority { font-size:8px;color:var(--txt3);padding:1px 6px;background:var(--border);border-radius:2px;flex-shrink:0; }
+.lab-block-actions { display:flex;gap:4px; }
+.lab-act-btn { font-size:8px;padding:2px 8px;background:var(--panel2);border:1px solid var(--border);color:var(--txt2);cursor:pointer;border-radius:2px;font-family:var(--font-ui);letter-spacing:1px; }
+.lab-act-btn:hover { color:var(--white);border-color:var(--border2); }
+.lab-act-del:hover { color:var(--red);border-color:var(--red); }
+.lab-block-content { padding:10px 12px;font-size:10px;color:var(--txt2);line-height:1.7;white-space:pre-wrap; }
+.lab-rule { background:var(--panel);border:1px solid var(--border2);border-radius:4px;margin-bottom:8px;overflow:hidden; }
+.lab-rule.disabled { opacity:0.4; }
+.lab-rule-header { display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border); }
+.lab-rule-title { font-size:10px;color:var(--white);flex:1; }
+.lab-rule-body { padding:10px 12px;display:flex;flex-direction:column;gap:5px; }
+.lab-rule-if, .lab-rule-then { font-size:10px;color:var(--txt2);line-height:1.5; }
+.lab-rule-kw { color:var(--purple);font-weight:700;margin-right:6px; }
+.lab-empty { font-size:9px;color:var(--txt3);padding:12px;text-align:center;letter-spacing:1px; }
+.lab-empty-large { font-size:10px;color:var(--txt3);padding:40px;text-align:center;letter-spacing:1px;line-height:2; }
+.lab-mem-grid { display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:16px; }
+.lab-mem-card { background:var(--panel2);border:1px solid var(--border);border-radius:4px;padding:12px; }
+.lab-mem-title { font-size:8px;color:var(--txt3);letter-spacing:2px;margin-bottom:8px; }
+.lab-mem-row { display:flex;justify-content:space-between;align-items:flex-start;padding:4px 0;border-bottom:1px solid var(--border);gap:8px; }
+.lab-mem-row:last-child { border-bottom:none; }
+.lab-mem-label { font-size:9px;color:var(--txt3);flex-shrink:0; }
+.lab-mem-val { font-size:9px;color:var(--txt);text-align:right;word-break:break-word; }
+.lab-mem-verdict { background:var(--panel2);border:1px solid var(--border2);border-radius:4px;padding:14px;border-left:3px solid var(--purple); }
+.lab-runs-table { background:var(--panel2);border-radius:4px;overflow:hidden;border:1px solid var(--border); }
+.lab-runs-header { display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;padding:7px 12px;font-size:7px;color:var(--txt3);letter-spacing:1px;border-bottom:1px solid var(--border); }
+.lab-runs-row { display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;padding:6px 12px;font-size:9px;color:var(--txt);border-bottom:1px solid var(--border); }
+.lab-runs-row:last-child { border-bottom:none; }
+.lab-sandbox-grid { display:grid;grid-template-columns:280px 1fr;gap:16px;margin-bottom:16px; }
+.lab-sandbox-left { display:flex;flex-direction:column;gap:0; }
+.lab-sandbox-right { background:var(--panel2);border-radius:4px;padding:12px;border:1px solid var(--border); }
+.lab-sand-section { background:var(--panel2);border-radius:4px;padding:12px;margin-bottom:8px;border:1px solid var(--border); }
+.lab-sand-title { font-size:8px;color:var(--txt3);letter-spacing:2px;margin-bottom:8px; }
+.lab-form-row { display:flex;align-items:center;gap:8px;margin-bottom:6px; }
+.lab-form-row label { font-size:8px;color:var(--txt3);width:80px;flex-shrink:0;letter-spacing:1px; }
+.lab-input { flex:1;background:var(--bg);border:1px solid var(--border2);color:var(--white);font-family:var(--font-ui);font-size:10px;padding:5px 8px;border-radius:2px;outline:none; }
+.lab-input-sm { width:80px;flex:none; }
+.lab-prompt-preview { font-size:9px;color:var(--txt2);line-height:1.7;white-space:pre-wrap;height:100%;min-height:300px;overflow-y:auto;font-family:var(--font-ui); }
+.lab-results-area { margin-top:16px; }
+.lab-results-header { display:flex;align-items:center;gap:12px;margin-bottom:10px; }
+.lab-results-title { font-size:10px;color:var(--white);font-weight:700;letter-spacing:2px; }
+.lab-rules-fired { display:flex;gap:6px;flex-wrap:wrap; }
+.rule-fired-chip { font-size:8px;padding:2px 8px;background:#00e87a18;color:var(--green);border-radius:2px;letter-spacing:1px; }
+.lab-results-grid { display:grid;grid-template-columns:1fr 1fr;gap:12px; }
+.lab-result-panel { background:var(--panel2);border:1px solid var(--border2);border-radius:4px;padding:14px; }
+.lab-result-label { font-size:8px;letter-spacing:2px;margin-bottom:8px; }
+.lab-result-text { font-size:10px;color:var(--txt);line-height:1.8;white-space:pre-wrap;min-height:120px; }
+.lab-result-actions { display:flex;gap:6px;margin-top:10px;padding-top:8px;border-top:1px solid var(--border); }
+@media (max-width:768px) {
+  .lab-sandbox-grid { grid-template-columns:1fr; }
+  .lab-results-grid { grid-template-columns:1fr; }
+  .lab-mem-grid { grid-template-columns:1fr; }
+}
+
 </style>
 </head>
 <body>
@@ -691,6 +776,11 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
       <div class="sb-item" onclick="nav('renders')">
         <div class="sb-dot" style="background:var(--amber)"></div>
         <span class="sb-label">Renders</span>
+      </div>
+      <div class="sb-item" onclick="nav('lab')">
+        <div class="sb-dot" style="background:var(--purple)"></div>
+        <span class="sb-label">Sully Lab</span>
+        <span class="sb-count" style="background:#a855f718;color:var(--purple)">LAB</span>
       </div>
     </div>
 
@@ -849,6 +939,19 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
         <div id="rd-grid" style="flex:1;overflow-y:auto;padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;align-content:start"></div>
       </div>
 
+      <div id="view-lab" class="view" style="position:relative">
+        <div id="lab-loading">LOADING SULLY LAB...</div>
+        <div id="lab-memory-bar"></div>
+        <div id="lab-tabs">
+          <button class="lab-tab-btn active" data-tab="identity" onclick="labSwitchTab('identity')">IDENTITY</button>
+          <button class="lab-tab-btn" data-tab="rules" onclick="labSwitchTab('rules')">RULES</button>
+          <button class="lab-tab-btn" data-tab="memory" onclick="labSwitchTab('memory')">MEMORY</button>
+          <button class="lab-tab-btn" data-tab="sandbox" onclick="labSwitchTab('sandbox')">SANDBOX</button>
+          <button class="lab-tab-btn" data-tab="history" onclick="labSwitchTab('history')">HISTORY</button>
+        </div>
+        <div id="lab-content"></div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -950,7 +1053,7 @@ function nav(view) {
   document.querySelectorAll('.bn-item').forEach(i => i.classList.remove('active'));
   const bnActive = document.querySelector(`.bn-item[data-view="${view}"]`);
   if (bnActive) bnActive.classList.add('active');
-  const titles = {dashboard:'Dashboard',docs:'All Documents',bugs:'Known Bugs',features:'Feature Status',roadmap:'Roadmap',changelog:'Changelog',decisions:'Decisions',cleanup:'Cleanup List',brainstorm:'Brainstorm',renders:'Renders'};
+  const titles = {dashboard:'Dashboard',docs:'All Documents',bugs:'Known Bugs',features:'Feature Status',roadmap:'Roadmap',changelog:'Changelog',decisions:'Decisions',cleanup:'Cleanup List',brainstorm:'Brainstorm',renders:'Renders',lab:'Sully Lab'};
   document.getElementById('tb-title').textContent = titles[view] || view;
   if(view === 'bugs') renderBugs();
   if(view === 'features') renderFeatures();
@@ -960,6 +1063,7 @@ function nav(view) {
   if(view === 'cleanup') renderCleanup();
   if(view === 'brainstorm') bsInit();
   if(view === 'renders') rdInit();
+  if(view === 'lab') labInit();
   if(view === 'docs') renderDocs();
   if(view === 'dashboard') renderDashboard();
 }
@@ -2568,46 +2672,164 @@ function bsDoImport() {
   const errEl = document.getElementById('bs-import-err');
   errEl.style.display = 'none';
 
-  let nodes;
+  let parsed;
   try {
-    nodes = JSON.parse(raw);
-    if (!Array.isArray(nodes)) throw new Error('Must be a JSON array');
+    parsed = JSON.parse(raw);
   } catch(e) {
     errEl.textContent = 'Invalid JSON: ' + e.message;
     errEl.style.display = 'block';
     return;
   }
 
-  // Place nodes in a spread pattern from canvas centre
+  // Accept: array of nodes OR {nodes, edges, groups}
+  let importNodes = [], importEdges = [], importGroups = [];
+  if (Array.isArray(parsed)) {
+    importGroups = parsed.filter(function(n){ return n.type === 'group'; });
+    importNodes  = parsed.filter(function(n){ return n.type !== 'group'; });
+  } else if (parsed && typeof parsed === 'object') {
+    importGroups = parsed.groups || [];
+    importEdges  = parsed.edges  || [];
+    var allNodes = parsed.nodes || [];
+    importGroups = importGroups.concat(allNodes.filter(function(n){ return n.type === 'group'; }));
+    importNodes  = allNodes.filter(function(n){ return n.type !== 'group'; });
+  } else {
+    errEl.textContent = 'Must be a JSON array or {nodes,edges,groups} object';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  if (!importNodes.length && !importGroups.length) {
+    errEl.textContent = 'No nodes found';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const valid = ['idea','feature','bug','ui','note','html','group'];
   const cx = (BS.W / 2 - BS.pan.x) / BS.scale;
   const cy = (BS.H / 2 - BS.pan.y) / BS.scale;
-  const cols = Math.ceil(Math.sqrt(nodes.length));
-  const spacing = 230;
+  const PAD = 20; // padding inside groups
+  const NODE_W = 200;
+  const NODE_H = 110;
+  const NODE_SPACING_X = 230;
+  const NODE_SPACING_Y = 140;
 
-  nodes.forEach(function(n, i) {
-    const col = i % cols;
-    const row = Math.floor(i / cols);
-    const valid = ['idea','feature','bug','ui','note','html','group'];
-    const type = valid.includes(n.type) ? n.type : 'idea';
+  // Map user string id → BS.nodes index after push
+  var idToIdx = {};
+
+  // ── 1. Place groups ──────────────────────────────────────
+  // Groups are placed first; we track their position for child node placement
+  var groupPositions = {}; // group title → {x, y, w, h, nextX, nextY, cols}
+
+  importGroups.forEach(function(g, gi) {
+    var title = g.title || ('Group ' + gi);
+
+    // Count children for this group to auto-size it
+    var children = importNodes.filter(function(n){ return n.group === title; });
+    var childCols = Math.ceil(Math.sqrt(Math.max(1, children.length)));
+    var childRows = Math.ceil(children.length / childCols);
+    var autoW = PAD * 2 + childCols * NODE_W + (childCols - 1) * (NODE_SPACING_X - NODE_W);
+    var autoH = 40 + PAD * 2 + childRows * NODE_H + (childRows - 1) * (NODE_SPACING_Y - NODE_H);
+    var gw = g.w || Math.max(autoW, 320);
+    var gh = g.h || Math.max(autoH, 200);
+
+    // Auto-layout groups in a row
+    var totalGroupW = importGroups.length * (gw + 30);
+    var gx = g.x !== undefined ? g.x : (cx - totalGroupW / 2 + gi * (gw + 30));
+    var gy = g.y !== undefined ? g.y : (cy - gh / 2 - (importNodes.filter(function(n){ return !n.group; }).length > 0 ? 150 : 0));
+
+    groupPositions[title] = { x: gx, y: gy, w: gw, h: gh, nextX: gx + PAD, nextY: gy + 40 + PAD, cols: childCols, col: 0, row: 0 };
+
+    var bsIdx = BS.nodes.length;
+    if (g.id) idToIdx[g.id] = bsIdx;
+    idToIdx['group:' + title] = bsIdx;
+
     BS.nodes.push({
-      id: Date.now() + i,
+      id: Date.now() + gi * 1000,
+      type: 'group',
+      title: title,
+      notes: g.notes || '',
+      link: g.link || '',
+      x: gx, y: gy, w: gw, h: gh,
+      imgData: null, _img: null
+    });
+  });
+
+  // ── 2. Place nodes ───────────────────────────────────────
+  // Nodes with a group → place inside that group
+  // Nodes without → grid below/beside groups
+  var orphanNodes = importNodes.filter(function(n){ return !n.group; });
+  var orphanCols  = Math.ceil(Math.sqrt(Math.max(1, orphanNodes.length)));
+  var orphanCount = 0;
+
+  // Orphan start position — below groups if groups exist
+  var orphanStartY = cy + (importGroups.length > 0 ? 200 : 0);
+  var orphanStartX = cx - orphanCols * NODE_SPACING_X / 2;
+
+  importNodes.forEach(function(n, ni) {
+    var type = valid.includes(n.type) ? n.type : 'idea';
+    var nx, ny;
+
+    if (n.group && groupPositions[n.group]) {
+      // Place inside group
+      var gp = groupPositions[n.group];
+      nx = gp.nextX;
+      ny = gp.nextY;
+
+      // Advance next position
+      gp.col++;
+      if (gp.col >= gp.cols) {
+        gp.col = 0;
+        gp.row++;
+        gp.nextX = gp.x + PAD;
+        gp.nextY += NODE_SPACING_Y;
+      } else {
+        gp.nextX += NODE_SPACING_X;
+      }
+    } else {
+      // Orphan — grid layout
+      var col = orphanCount % orphanCols;
+      var row = Math.floor(orphanCount / orphanCols);
+      nx = orphanStartX + col * NODE_SPACING_X + (Math.random() * 10 - 5);
+      ny = orphanStartY + row * NODE_SPACING_Y + (Math.random() * 10 - 5);
+      orphanCount++;
+    }
+
+    var bsIdx = BS.nodes.length;
+    if (n.id) idToIdx[n.id] = bsIdx;
+
+    BS.nodes.push({
+      id: Date.now() + 10000 + ni,
       type: type,
       title: n.title || 'Untitled',
       notes: n.notes || '',
       link: n.link || '',
-      x: cx - (cols * spacing / 2) + col * spacing + (Math.random() * 20 - 10),
-      y: cy - (Math.floor(nodes.length / cols) * spacing / 2) + row * spacing + (Math.random() * 20 - 10),
-      w: 200,
+      x: nx, y: ny,
+      w: NODE_W,
       h: 90 + (n.notes ? 40 : 0),
       imgData: null, _img: null
     });
   });
 
+  // ── 3. Wire edges ────────────────────────────────────────
+  var edgesAdded = 0;
+  importEdges.forEach(function(e) {
+    var fromIdx = idToIdx[e.from];
+    var toIdx   = idToIdx[e.to];
+    if (fromIdx === undefined || toIdx === undefined) return;
+    BS.edges.push({ from: fromIdx, to: toIdx, label: e.label || '' });
+    edgesAdded++;
+  });
+
   bsCloseImport();
   bsDraw();
   bsScheduleSave();
-  showToast(nodes.length + ' node' + (nodes.length !== 1 ? 's' : '') + ' added', 'success');
+
+  var total = importNodes.length + importGroups.length;
+  var msg = total + ' node' + (total !== 1 ? 's' : '') + ' added';
+  if (edgesAdded) msg += ' · ' + edgesAdded + ' connection' + (edgesAdded !== 1 ? 's' : '');
+  showToast(msg, 'success');
 }
+
 
 // ── Persistence ───────────────────────────────────────────
 function bsScheduleSave() {
@@ -3294,6 +3516,670 @@ function downloadExport() {
 
 
 // ══════════════════════════════════════════════════════════
+// SULLY LAB — Full engineering tool
+// ══════════════════════════════════════════════════════════
+
+const LAB = {
+  identity: [],
+  rules: [],
+  driverData: null,
+  memory: null,
+  runs: [],
+  sessions: [],
+  debriefs: [],
+  activeTab: 'identity',
+  testRunning: false,
+  temperature: 0.7,
+  corrections: [],
+};
+
+// ── Init ──────────────────────────────────────────────────
+async function labInit() {
+  if (LAB.loaded) return;
+  LAB.loaded = true;
+  labShowLoading(true);
+  await labLoadAllData();
+  labShowLoading(false);
+  labRender();
+}
+
+async function labLoadAllData() {
+  const uid = (await supa.auth.getUser()).data.user?.id;
+  if (!uid) return;
+  LAB.uid = uid;
+
+  const [identityRes, rulesRes, memoryRes, runsRes, sessionsRes, debriefRes, profileRes] = await Promise.all([
+    supa.from('sully_identity').select('*').eq('user_id', uid).order('priority', {ascending: false}),
+    supa.from('sully_rules').select('*').eq('user_id', uid).order('priority', {ascending: false}),
+    supa.from('sully_memory').select('*').eq('user_id', uid).maybeSingle(),
+    supa.from('sully_runs').select('*').eq('user_id', uid).order('created_at', {ascending: false}).limit(50),
+    supa.from('sully_sessions').select('*').eq('user_id', uid).order('created_at', {ascending: false}).limit(20),
+    supa.from('run_debriefs').select('*').eq('user_id', uid).order('created_at', {ascending: false}).limit(20),
+    supa.from('profiles').select('*').eq('user_id', uid).maybeSingle(),
+  ]);
+
+  LAB.identity  = identityRes.data  || [];
+  LAB.rules     = rulesRes.data     || [];
+  LAB.memory    = memoryRes.data    || {};
+  LAB.runs      = runsRes.data      || [];
+  LAB.sessions  = sessionsRes.data  || [];
+  LAB.debriefs  = debriefRes.data   || [];
+  LAB.profile   = profileRes.data   || {};
+}
+
+// ── Render ────────────────────────────────────────────────
+function labRender() {
+  labRenderNav();
+  labRenderActiveTab();
+  labRenderMemoryBar();
+}
+
+function labRenderNav() {
+  document.querySelectorAll('.lab-tab-btn').forEach(function(btn) {
+    btn.classList.toggle('active', btn.dataset.tab === LAB.activeTab);
+  });
+}
+
+function labSwitchTab(tab) {
+  LAB.activeTab = tab;
+  labRenderNav();
+  labRenderActiveTab();
+}
+
+function labRenderActiveTab() {
+  const content = document.getElementById('lab-content');
+  if (!content) return;
+  switch (LAB.activeTab) {
+    case 'identity':  content.innerHTML = labRenderIdentity();  break;
+    case 'rules':     content.innerHTML = labRenderRules();     break;
+    case 'memory':    content.innerHTML = labRenderMemory();    break;
+    case 'sandbox':   content.innerHTML = labRenderSandbox();   break;
+    case 'history':   content.innerHTML = labRenderHistory();   break;
+  }
+}
+
+// ── Memory bar (always visible) ───────────────────────────
+function labRenderMemoryBar() {
+  const m = LAB.memory || {};
+  const p = LAB.profile || {};
+  const el = document.getElementById('lab-memory-bar');
+  if (!el) return;
+  el.innerHTML =
+    '<span class="lmb-item"><span class="lmb-label">DRIVER</span><span class="lmb-val">' + (p.display_name || p.username || 'You') + '</span></span>' +
+    '<span class="lmb-sep">·</span>' +
+    '<span class="lmb-item"><span class="lmb-label">FORM</span><span class="lmb-val" style="color:var(--amber)">' + ((m.form_score || 0) * 10).toFixed(1) + '/10</span></span>' +
+    '<span class="lmb-sep">·</span>' +
+    '<span class="lmb-item"><span class="lmb-label">SESSIONS</span><span class="lmb-val">' + (m.session_count || 0) + '</span></span>' +
+    '<span class="lmb-sep">·</span>' +
+    '<span class="lmb-item"><span class="lmb-label">RUNS</span><span class="lmb-val">' + LAB.runs.length + '</span></span>' +
+    '<span class="lmb-sep">·</span>' +
+    '<span class="lmb-item"><span class="lmb-label">IDENTITY BLOCKS</span><span class="lmb-val" style="color:var(--purple)">' + LAB.identity.filter(function(i){return i.enabled;}).length + '</span></span>' +
+    '<span class="lmb-sep">·</span>' +
+    '<span class="lmb-item"><span class="lmb-label">RULES</span><span class="lmb-val" style="color:var(--green)">' + LAB.rules.filter(function(r){return r.enabled;}).length + '</span></span>';
+}
+
+// ── Identity Tab ──────────────────────────────────────────
+function labRenderIdentity() {
+  const cats = ['voice','philosophy','psychology','redlines','examples'];
+  const catColors = {voice:'var(--accent)',philosophy:'var(--purple)',psychology:'var(--amber)',redlines:'var(--red)',examples:'var(--green)'};
+  const catDesc = {
+    voice:'How Sully speaks — tone, sentence length, vocabulary',
+    philosophy:'What Sully believes about coaching and improvement',
+    psychology:'How Sully reads and responds to your mental state',
+    redlines:'Things Sully never says or does',
+    examples:'Good and bad response examples for Sully to learn from'
+  };
+
+  var html = '<div class="lab-section-header"><div><div class="lab-section-title">IDENTITY EDITOR</div><div class="lab-section-sub">Define who Sully is. Each block becomes part of his system prompt.</div></div><button class="lab-btn lab-btn-accent" onclick="labAddIdentity()">+ ADD BLOCK</button></div>';
+
+  cats.forEach(function(cat) {
+    var blocks = LAB.identity.filter(function(i){ return i.category === cat; });
+    html += '<div class="lab-cat-section">';
+    html += '<div class="lab-cat-header" style="border-left-color:' + catColors[cat] + '">';
+    html += '<div><div class="lab-cat-title" style="color:' + catColors[cat] + '">' + cat.toUpperCase() + '</div>';
+    html += '<div class="lab-cat-desc">' + catDesc[cat] + '</div></div>';
+    html += '<span style="font-size:9px;color:var(--txt3)">' + blocks.length + ' blocks</span></div>';
+
+    if (blocks.length === 0) {
+      html += '<div class="lab-empty">No ' + cat + ' blocks yet — <span style="color:var(--accent);cursor:pointer" onclick="labAddIdentity(\'' + cat + '\')">add one</span></div>';
+    } else {
+      blocks.forEach(function(block) {
+        html += '<div class="lab-block ' + (block.enabled ? '' : 'disabled') + '" id="iblock-' + block.id + '">';
+        html += '<div class="lab-block-header">';
+        html += '<div class="lab-toggle" onclick="labToggleIdentity(\'' + block.id + '\')">' + (block.enabled ? '●' : '○') + '</div>';
+        html += '<div class="lab-block-title">' + block.title + '</div>';
+        html += '<div class="lab-block-priority" title="Priority">P' + block.priority + '</div>';
+        html += '<div class="lab-block-actions">';
+        html += '<button class="lab-act-btn" onclick="labEditIdentity(\'' + block.id + '\')">EDIT</button>';
+        html += '<button class="lab-act-btn lab-act-del" onclick="labDeleteIdentity(\'' + block.id + '\')">✕</button>';
+        html += '</div></div>';
+        html += '<div class="lab-block-content">' + block.content + '</div>';
+        html += '</div>';
+      });
+    }
+    html += '</div>';
+  });
+  return html;
+}
+
+// ── Rules Tab ─────────────────────────────────────────────
+function labRenderRules() {
+  var html = '<div class="lab-section-header"><div><div class="lab-section-title">RULES BUILDER</div><div class="lab-section-sub">Behavioural logic — IF condition THEN action. These fire automatically during every debrief.</div></div><button class="lab-btn lab-btn-accent" onclick="labAddRule()">+ ADD RULE</button></div>';
+
+  if (LAB.rules.length === 0) {
+    html += '<div class="lab-empty-large">No rules yet.<br><br>Rules tell Sully how to behave in specific situations.<br>Example: IF braking flagged 3x consecutive THEN escalate to drill mode.<br><br><button class="lab-btn lab-btn-accent" onclick="labAddRule()">+ ADD FIRST RULE</button></div>';
+    return html;
+  }
+
+  LAB.rules.forEach(function(rule) {
+    html += '<div class="lab-rule ' + (rule.enabled ? '' : 'disabled') + '" id="rule-' + rule.id + '">';
+    html += '<div class="lab-rule-header">';
+    html += '<div class="lab-toggle" onclick="labToggleRule(\'' + rule.id + '\')">' + (rule.enabled ? '●' : '○') + '</div>';
+    html += '<div class="lab-rule-title">' + rule.title + '</div>';
+    html += '<div style="font-size:8px;color:var(--txt3);margin-left:auto">' + (rule.fire_count || 0) + ' fires</div>';
+    html += '<div class="lab-block-actions">';
+    html += '<button class="lab-act-btn" onclick="labEditRule(\'' + rule.id + '\')">EDIT</button>';
+    html += '<button class="lab-act-btn lab-act-del" onclick="labDeleteRule(\'' + rule.id + '\')">✕</button>';
+    html += '</div></div>';
+    html += '<div class="lab-rule-body">';
+    html += '<div class="lab-rule-if"><span class="lab-rule-kw">IF</span> ' + rule.condition + '</div>';
+    html += '<div class="lab-rule-then"><span class="lab-rule-kw">THEN</span> ' + rule.action + '</div>';
+    html += '</div></div>';
+  });
+  return html;
+}
+
+// ── Memory Tab ────────────────────────────────────────────
+function labRenderMemory() {
+  const m = LAB.memory || {};
+  const p = LAB.profile || {};
+  var html = '<div class="lab-section-header"><div class="lab-section-title">MEMORY INSPECTOR</div><div class="lab-section-sub">Everything Sully knows about you right now. This is what goes into every prompt.</div></div>';
+
+  // Driver identity
+  html += '<div class="lab-mem-grid">';
+  html += '<div class="lab-mem-card"><div class="lab-mem-title">DRIVER PROFILE</div>';
+  html += labMemRow('Name', p.display_name || p.username || '—');
+  html += labMemRow('Wheel', p.rig_wheel || '—');
+  html += labMemRow('Pedals', p.rig_pedals || '—');
+  html += labMemRow('FFB', p.rig_ffb || '—');
+  html += '</div>';
+
+  // Form & stats
+  html += '<div class="lab-mem-card"><div class="lab-mem-title">FORM & STATS</div>';
+  html += labMemRow('Form score', ((m.form_score || 0) * 10).toFixed(1) + '/10', 'var(--amber)');
+  html += labMemRow('Sessions', m.session_count || 0);
+  html += labMemRow('Total stages', m.total_stages || 0);
+  html += labMemRow('Consistency', ((m.consistency_score || 0) * 100).toFixed(0) + '%');
+  html += labMemRow('Clean streak', m.current_clean_streak || 0, 'var(--green)');
+  html += labMemRow('Improve streak', m.current_improve_streak || 0, 'var(--green)');
+  html += '</div>';
+
+  // Coaching state
+  html += '<div class="lab-mem-card"><div class="lab-mem-title">COACHING STATE</div>';
+  html += labMemRow('Mode', m.current_mode || 'training', 'var(--accent)');
+  html += labMemRow('Weaknesses', m.weaknesses || '—');
+  html += labMemRow('Strengths', m.strengths || '—');
+  html += labMemRow('Recurring mistakes', m.recurring_mistakes || '—');
+  html += labMemRow('Mental patterns', m.mental_patterns || '—');
+  html += labMemRow('Last fix', m.last_priority_fix || '—');
+  html += '</div>';
+
+  // PBs
+  html += '<div class="lab-mem-card"><div class="lab-mem-title">PERSONAL BESTS</div>';
+  html += labMemRow('PB stage time', m.pb_stage_time ? m.pb_stage_time.toFixed(1) + 's' : '—', 'var(--green)');
+  html += labMemRow('PB top speed', m.pb_top_speed ? m.pb_top_speed.toFixed(0) + ' kph' : '—', 'var(--green)');
+  html += labMemRow('PB clean streak', m.pb_clean_streak || 0);
+  html += labMemRow('7d avg time', m.avg_stage_time_7d ? m.avg_stage_time_7d.toFixed(1) + 's' : '—');
+  html += '</div>';
+  html += '</div>';
+
+  // Last verdict
+  if (m.last_sully_verdict) {
+    html += '<div class="lab-mem-verdict"><div class="lab-mem-title" style="margin-bottom:8px">LAST SULLY VERDICT</div><div style="font-size:10px;color:var(--txt2);line-height:1.7">' + m.last_sully_verdict + '</div></div>';
+  }
+
+  // Recent runs table
+  html += '<div style="margin-top:16px"><div class="lab-mem-title" style="margin-bottom:10px">RECENT RUNS (' + LAB.runs.length + ')</div>';
+  html += '<div class="lab-runs-table"><div class="lab-runs-header"><span>FILENAME</span><span>TIME</span><span>SPEED</span><span>CRASHES</span><span>RATING</span></div>';
+  LAB.runs.slice(0, 10).forEach(function(r) {
+    html += '<div class="lab-runs-row">';
+    html += '<span style="color:var(--txt2);font-size:9px">' + (r.run_filename || '—').replace(/^.*[\\/]/, '').substring(0, 30) + '</span>';
+    html += '<span>' + (r.stage_time ? r.stage_time.toFixed(1) + 's' : '—') + '</span>';
+    html += '<span>' + (r.top_speed ? r.top_speed.toFixed(0) + ' kph' : '—') + '</span>';
+    html += '<span style="color:' + (r.crash_count > 0 ? 'var(--red)' : 'var(--green)') + '">' + (r.crash_count || 0) + '</span>';
+    html += '<span style="color:var(--amber)">' + (r.session_rating ? r.session_rating.toFixed(1) : '—') + '</span>';
+    html += '</div>';
+  });
+  html += '</div></div>';
+
+  return html;
+}
+
+function labMemRow(label, value, color) {
+  return '<div class="lab-mem-row"><span class="lab-mem-label">' + label + '</span><span class="lab-mem-val"' + (color ? ' style="color:' + color + '"' : '') + '>' + value + '</span></div>';
+}
+
+// ── Sandbox Tab ───────────────────────────────────────────
+function labRenderSandbox() {
+  var html = '<div class="lab-section-header"><div><div class="lab-section-title">TEST SANDBOX</div><div class="lab-section-sub">Build a scenario, run it through Sully, see Claude and Gemini side by side. Annotate the response.</div></div></div>';
+
+  // Scenario builder
+  html += '<div class="lab-sandbox-grid">';
+
+  // Left — scenario config
+  html += '<div class="lab-sandbox-left">';
+  html += '<div class="lab-sand-section"><div class="lab-sand-title">SCENARIO</div>';
+  html += '<div class="lab-form-row"><label>Stage</label><input id="sand-stage" value="Rally Iberia — Montclar" class="lab-input"></div>';
+  html += '<div class="lab-form-row"><label>Mode</label><select id="sand-mode" class="lab-input"><option>training</option><option>race</option><option>qualifying</option><option>consistency</option><option>mental</option></select></div>';
+  html += '<div class="lab-form-row"><label>Driver mood</label><select id="sand-mood" class="lab-input"><option value="neutral">Neutral</option><option value="frustrated">Frustrated</option><option value="confident">Confident</option><option value="tired">Tired</option></select></div>';
+  html += '</div>';
+
+  html += '<div class="lab-sand-section"><div class="lab-sand-title">USE REAL DATA</div>';
+  html += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">';
+  html += '<input type="checkbox" id="sand-use-memory" checked style="accent-color:var(--accent)"> <label style="font-size:9px;color:var(--txt2)">Inject sully_memory</label></div>';
+  html += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">';
+  html += '<input type="checkbox" id="sand-use-runs" checked style="accent-color:var(--accent)"> <label style="font-size:9px;color:var(--txt2)">Inject last 3 runs</label></div>';
+  html += '<div style="display:flex;gap:8px;align-items:center">';
+  html += '<input type="checkbox" id="sand-use-debriefs" style="accent-color:var(--accent)"> <label style="font-size:9px;color:var(--txt2)">Inject last debrief</label></div>';
+  html += '</div>';
+
+  html += '<div class="lab-sand-section"><div class="lab-sand-title">FAKE METRICS (override)</div>';
+  html += '<div class="lab-form-row"><label>Avg brake</label><input id="sand-brake" placeholder="0.74" class="lab-input lab-input-sm"></div>';
+  html += '<div class="lab-form-row"><label>Avg throttle</label><input id="sand-throttle" placeholder="0.68" class="lab-input lab-input-sm"></div>';
+  html += '<div class="lab-form-row"><label>Crash count</label><input id="sand-crashes" placeholder="0" class="lab-input lab-input-sm"></div>';
+  html += '<div class="lab-form-row"><label>Stage time</label><input id="sand-time" placeholder="521.4" class="lab-input lab-input-sm"></div>';
+  html += '</div>';
+
+  html += '<div class="lab-sand-section"><div class="lab-sand-title">TEMPERATURE</div>';
+  html += '<div style="display:flex;align-items:center;gap:10px">';
+  html += '<input type="range" id="sand-temp" min="0" max="1" step="0.05" value="0.7" style="flex:1;accent-color:var(--accent)" oninput="document.getElementById(\'sand-temp-val\').textContent=this.value">';
+  html += '<span id="sand-temp-val" style="font-size:10px;color:var(--accent);width:30px">0.7</span>';
+  html += '</div><div style="font-size:8px;color:var(--txt3);margin-top:4px">Lower = more consistent · Higher = more creative</div>';
+  html += '</div>';
+
+  html += '<button class="lab-btn lab-btn-run" onclick="labRunTest()" id="lab-run-btn">▶ RUN TEST</button>';
+  html += '</div>';
+
+  // Right — prompt preview
+  html += '<div class="lab-sandbox-right">';
+  html += '<div class="lab-sand-title" style="margin-bottom:8px">PROMPT PREVIEW</div>';
+  html += '<div id="sand-prompt-preview" class="lab-prompt-preview">Click RUN TEST to see the prompt that will be sent to Sully...</div>';
+  html += '</div>';
+  html += '</div>';
+
+  // Results area
+  html += '<div id="lab-results" class="lab-results-area" style="display:none">';
+  html += '<div class="lab-results-header">';
+  html += '<div class="lab-results-title">RESPONSE</div>';
+  html += '<div id="lab-rules-fired" class="lab-rules-fired"></div>';
+  html += '</div>';
+  html += '<div class="lab-results-grid">';
+  html += '<div class="lab-result-panel"><div class="lab-result-label" style="color:var(--accent)">⬡ CLAUDE</div><div id="lab-claude-out" class="lab-result-text">—</div><div class="lab-result-actions"><button class="lab-act-btn" onclick="labAnnotate(\'claude\')">ANNOTATE</button><button class="lab-act-btn" onclick="labCapture(\'claude\')">CAPTURE CORRECTION</button></div></div>';
+  html += '<div class="lab-result-panel"><div class="lab-result-label" style="color:var(--amber)">◈ GEMINI</div><div id="lab-gemini-out" class="lab-result-text">—</div><div class="lab-result-actions"><button class="lab-act-btn" onclick="labAnnotate(\'gemini\')">ANNOTATE</button><button class="lab-act-btn" onclick="labCapture(\'gemini\')">CAPTURE CORRECTION</button></div></div>';
+  html += '</div></div>';
+
+  return html;
+}
+
+// ── History Tab ───────────────────────────────────────────
+function labRenderHistory() {
+  var html = '<div class="lab-section-header"><div class="lab-section-title">TEST HISTORY</div><div class="lab-section-sub">All saved test sessions. Review, compare, capture corrections.</div></div>';
+  html += '<div class="lab-empty-large">No test sessions yet. Run your first test in the Sandbox.</div>';
+  return html;
+}
+
+// ── Prompt Builder ────────────────────────────────────────
+function labBuildPrompt() {
+  const stage    = document.getElementById('sand-stage')?.value || 'Unknown stage';
+  const mode     = document.getElementById('sand-mode')?.value || 'training';
+  const mood     = document.getElementById('sand-mood')?.value || 'neutral';
+  const useMemory  = document.getElementById('sand-use-memory')?.checked;
+  const useRuns    = document.getElementById('sand-use-runs')?.checked;
+  const useDebriefs = document.getElementById('sand-use-debriefs')?.checked;
+  const brake    = document.getElementById('sand-brake')?.value;
+  const throttle = document.getElementById('sand-throttle')?.value;
+  const crashes  = document.getElementById('sand-crashes')?.value;
+  const time     = document.getElementById('sand-time')?.value;
+
+  var prompt = '';
+
+  // 1. Identity blocks (enabled, sorted by priority)
+  const enabledIdentity = LAB.identity.filter(function(i){ return i.enabled; })
+    .sort(function(a,b){ return b.priority - a.priority; });
+
+  if (enabledIdentity.length > 0) {
+    prompt += '=== IDENTITY ===\n';
+    enabledIdentity.forEach(function(block) {
+      prompt += '[' + block.category.toUpperCase() + ' — ' + block.title + ']\n';
+      prompt += block.content + '\n\n';
+    });
+  }
+
+  // 2. Rules
+  const enabledRules = LAB.rules.filter(function(r){ return r.enabled; });
+  if (enabledRules.length > 0) {
+    prompt += '=== BEHAVIOURAL RULES ===\n';
+    enabledRules.forEach(function(rule) {
+      prompt += '• IF ' + rule.condition + ' → THEN ' + rule.action + '\n';
+    });
+    prompt += '\n';
+  }
+
+  // 3. Memory
+  if (useMemory && LAB.memory) {
+    const m = LAB.memory;
+    prompt += '=== DRIVER MEMORY ===\n';
+    prompt += 'Driver: ' + (LAB.profile?.display_name || LAB.profile?.username || 'Unknown') + '\n';
+    prompt += 'Sessions: ' + (m.session_count || 0) + '\n';
+    prompt += 'Form score: ' + ((m.form_score || 0) * 10).toFixed(1) + '/10\n';
+    if (m.weaknesses) prompt += 'Weaknesses: ' + m.weaknesses + '\n';
+    if (m.strengths) prompt += 'Strengths: ' + m.strengths + '\n';
+    if (m.mental_patterns) prompt += 'Mental patterns: ' + m.mental_patterns + '\n';
+    if (m.recurring_mistakes) prompt += 'Recurring mistakes: ' + m.recurring_mistakes + '\n';
+    if (m.last_priority_fix) prompt += 'Last focus: ' + m.last_priority_fix + '\n';
+    prompt += '\n';
+  }
+
+  // 4. Recent runs
+  if (useRuns && LAB.runs.length > 0) {
+    prompt += '=== RECENT RUNS (last 3) ===\n';
+    LAB.runs.slice(0, 3).forEach(function(r, i) {
+      prompt += 'Run ' + (i+1) + ': ';
+      if (r.stage_time) prompt += r.stage_time.toFixed(1) + 's · ';
+      if (r.top_speed)  prompt += r.top_speed.toFixed(0) + 'kph · ';
+      if (r.crash_count !== null) prompt += r.crash_count + ' crashes · ';
+      if (r.sully_verdict) prompt += 'Verdict: ' + r.sully_verdict;
+      prompt += '\n';
+    });
+    prompt += '\n';
+  }
+
+  // 5. Last debrief
+  if (useDebriefs && LAB.debriefs.length > 0) {
+    prompt += '=== LAST DEBRIEF ===\n';
+    prompt += LAB.debriefs[0].debrief_text + '\n\n';
+  }
+
+  // 6. Current run metrics
+  prompt += '=== THIS RUN ===\n';
+  prompt += 'Stage: ' + stage + '\n';
+  prompt += 'Mode: ' + mode + '\n';
+  prompt += 'Driver mood: ' + mood + '\n';
+  if (brake)    prompt += 'Avg brake pressure: ' + brake + '\n';
+  if (throttle) prompt += 'Avg throttle: ' + throttle + '\n';
+  if (crashes)  prompt += 'Crash count: ' + crashes + '\n';
+  if (time)     prompt += 'Stage time: ' + time + 's\n';
+  prompt += '\n';
+
+  prompt += '=== INSTRUCTION ===\n';
+  prompt += 'Deliver a post-stage coaching debrief as Sully. Follow all identity and rules above exactly. Be specific. Reference data. Sound human.';
+
+  return prompt;
+}
+
+// ── Run Test ──────────────────────────────────────────────
+async function labRunTest() {
+  if (LAB.testRunning) return;
+  LAB.testRunning = true;
+
+  const btn = document.getElementById('lab-run-btn');
+  if (btn) btn.textContent = '⏳ RUNNING...';
+
+  const prompt = labBuildPrompt();
+  const temp = parseFloat(document.getElementById('sand-temp')?.value || '0.7');
+
+  // Show prompt preview
+  const preview = document.getElementById('sand-prompt-preview');
+  if (preview) preview.textContent = prompt;
+
+  // Show results area
+  const results = document.getElementById('lab-results');
+  if (results) results.style.display = 'block';
+
+  const claudeOut = document.getElementById('lab-claude-out');
+  const geminiOut = document.getElementById('lab-gemini-out');
+  if (claudeOut) claudeOut.textContent = 'Asking Claude...';
+  if (geminiOut) geminiOut.textContent = 'Asking Gemini...';
+
+  // Run both in parallel
+  const [claudeRes, geminiRes] = await Promise.all([
+    labCallClaude(prompt, temp),
+    labCallGemini(prompt, temp),
+  ]);
+
+  if (claudeOut) claudeOut.textContent = claudeRes;
+  if (geminiOut) geminiOut.textContent = geminiRes;
+
+  // Check which rules fired
+  labCheckRulesFired(claudeRes);
+
+  LAB.testRunning = false;
+  if (btn) btn.textContent = '▶ RUN TEST';
+
+  // Store last responses for annotation/correction
+  LAB._lastClaude = claudeRes;
+  LAB._lastGemini = geminiRes;
+  LAB._lastPrompt = prompt;
+}
+
+async function labCallClaude(prompt, temp) {
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        temperature: temp,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await resp.json();
+    return data.content?.[0]?.text || '[No response]';
+  } catch(e) {
+    return '[Claude error: ' + e.message + ']';
+  }
+}
+
+async function labCallGemini(prompt, temp) {
+  try {
+    // Pull Gemini API key from app_config
+    const { data } = await supa.from('app_config').select('value').eq('key', 'gemini_api_key').maybeSingle();
+    const apiKey = data?.value;
+    if (!apiKey) return '[Gemini: no API key in app_config]';
+
+    const resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + apiKey, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: temp, maxOutputTokens: 1000 }
+      })
+    });
+    const data2 = await resp.json();
+    return data2.candidates?.[0]?.content?.parts?.[0]?.text || '[No response]';
+  } catch(e) {
+    return '[Gemini error: ' + e.message + ']';
+  }
+}
+
+function labCheckRulesFired(response) {
+  const firedEl = document.getElementById('lab-rules-fired');
+  if (!firedEl) return;
+  var fired = [];
+  LAB.rules.filter(function(r){ return r.enabled; }).forEach(function(rule) {
+    // Simple keyword check — in production this would be smarter
+    var condLower = rule.condition.toLowerCase();
+    var respLower = response.toLowerCase();
+    var keywords = condLower.match(/\b\w{4,}\b/g) || [];
+    var matches = keywords.filter(function(k){ return respLower.includes(k); });
+    if (matches.length >= 2) fired.push(rule.title);
+  });
+
+  if (fired.length === 0) {
+    firedEl.innerHTML = '<span style="color:var(--txt3);font-size:8px">No rules detected in response</span>';
+  } else {
+    firedEl.innerHTML = fired.map(function(r){
+      return '<span class="rule-fired-chip">✓ ' + r + '</span>';
+    }).join('');
+  }
+}
+
+// ── Capture correction ────────────────────────────────────
+function labCapture(source) {
+  const text = source === 'claude' ? LAB._lastClaude : LAB._lastGemini;
+  const bad = prompt('Paste the bad line or phrase from Sully\'s response:');
+  if (!bad) return;
+  const correction = prompt('What should Sully have said instead?');
+  if (!correction) return;
+
+  supa.from('sully_corrections').insert({
+    user_id: LAB.uid,
+    bad_text: bad,
+    correction: correction,
+  }).then(function(res) {
+    if (!res.error) showToast('Correction saved — add it as a rule to make it permanent', 'success');
+  });
+}
+
+// ── CRUD: Identity ────────────────────────────────────────
+function labAddIdentity(cat) {
+  labOpenModal('ADD IDENTITY BLOCK', [
+    {label:'Category', key:'category', type:'select', options:['voice','philosophy','psychology','redlines','examples'], val: cat || 'voice'},
+    {label:'Title', key:'title', type:'input', val:''},
+    {label:'Content', key:'content', type:'textarea', val:''},
+    {label:'Priority (higher = used first)', key:'priority', type:'input', val:'0'},
+  ], async function(data) {
+    const { data: row, error } = await supa.from('sully_identity').insert({
+      user_id: LAB.uid,
+      category: data.category,
+      title: data.title,
+      content: data.content,
+      priority: parseInt(data.priority) || 0,
+    }).select().single();
+    if (!error) {
+      LAB.identity.push(row);
+      labRenderActiveTab();
+      labRenderMemoryBar();
+      showToast('Identity block added', 'success');
+    }
+  });
+}
+
+function labEditIdentity(id) {
+  const block = LAB.identity.find(function(i){ return i.id === id; });
+  if (!block) return;
+  labOpenModal('EDIT IDENTITY BLOCK', [
+    {label:'Category', key:'category', type:'select', options:['voice','philosophy','psychology','redlines','examples'], val: block.category},
+    {label:'Title', key:'title', type:'input', val: block.title},
+    {label:'Content', key:'content', type:'textarea', val: block.content},
+    {label:'Priority', key:'priority', type:'input', val: String(block.priority)},
+  ], async function(data) {
+    const { error } = await supa.from('sully_identity').update({
+      category: data.category, title: data.title,
+      content: data.content, priority: parseInt(data.priority) || 0,
+      updated_at: new Date().toISOString()
+    }).eq('id', id);
+    if (!error) {
+      Object.assign(block, data);
+      block.priority = parseInt(data.priority) || 0;
+      labRenderActiveTab();
+      showToast('Updated', 'success');
+    }
+  });
+}
+
+async function labToggleIdentity(id) {
+  const block = LAB.identity.find(function(i){ return i.id === id; });
+  if (!block) return;
+  block.enabled = !block.enabled;
+  await supa.from('sully_identity').update({ enabled: block.enabled }).eq('id', id);
+  labRenderActiveTab();
+  labRenderMemoryBar();
+}
+
+async function labDeleteIdentity(id) {
+  if (!confirm('Delete this identity block?')) return;
+  await supa.from('sully_identity').delete().eq('id', id);
+  LAB.identity = LAB.identity.filter(function(i){ return i.id !== id; });
+  labRenderActiveTab();
+  labRenderMemoryBar();
+  showToast('Deleted', 'success');
+}
+
+// ── CRUD: Rules ───────────────────────────────────────────
+function labAddRule() {
+  labOpenModal('ADD RULE', [
+    {label:'Title', key:'title', type:'input', val:''},
+    {label:'IF condition', key:'condition', type:'input', val:'e.g. braking flagged 3x consecutive'},
+    {label:'THEN action', key:'action', type:'textarea', val:'e.g. escalate to drill mode, reference specific corner'},
+    {label:'Priority', key:'priority', type:'input', val:'0'},
+  ], async function(data) {
+    const { data: row, error } = await supa.from('sully_rules').insert({
+      user_id: LAB.uid,
+      title: data.title, condition: data.condition,
+      action: data.action, priority: parseInt(data.priority) || 0,
+    }).select().single();
+    if (!error) {
+      LAB.rules.push(row);
+      labRenderActiveTab();
+      labRenderMemoryBar();
+      showToast('Rule added', 'success');
+    }
+  });
+}
+
+function labEditRule(id) {
+  const rule = LAB.rules.find(function(r){ return r.id === id; });
+  if (!rule) return;
+  labOpenModal('EDIT RULE', [
+    {label:'Title', key:'title', type:'input', val: rule.title},
+    {label:'IF condition', key:'condition', type:'input', val: rule.condition},
+    {label:'THEN action', key:'action', type:'textarea', val: rule.action},
+    {label:'Priority', key:'priority', type:'input', val: String(rule.priority)},
+  ], async function(data) {
+    await supa.from('sully_rules').update({
+      title: data.title, condition: data.condition,
+      action: data.action, priority: parseInt(data.priority) || 0,
+    }).eq('id', id);
+    Object.assign(rule, data);
+    rule.priority = parseInt(data.priority) || 0;
+    labRenderActiveTab();
+    showToast('Rule updated', 'success');
+  });
+}
+
+async function labToggleRule(id) {
+  const rule = LAB.rules.find(function(r){ return r.id === id; });
+  if (!rule) return;
+  rule.enabled = !rule.enabled;
+  await supa.from('sully_rules').update({ enabled: rule.enabled }).eq('id', id);
+  labRenderActiveTab();
+  labRenderMemoryBar();
+}
+
+async function labDeleteRule(id) {
+  if (!confirm('Delete this rule?')) return;
+  await supa.from('sully_rules').delete().eq('id', id);
+  LAB.rules = LAB.rules.filter(function(r){ return r.id !== id; });
+  labRenderActiveTab();
+  labRenderMemoryBar();
+  showToast('Deleted', 'success');
+}
+
+// ── Modal (reuse hub modal) ───────────────────────────────
+function labOpenModal(title, fields, onSave) {
+  openModal(title, fields, onSave);
+}
+
+// ── Loading ───────────────────────────────────────────────
+function labShowLoading(show) {
+  const el = document.getElementById('lab-loading');
+  if (el) el.style.display = show ? 'flex' : 'none';
+}
+
+
+// ══════════════════════════════════════════════════════════
 // SUPABASE DATA LAYER
 // ══════════════════════════════════════════════════════════
 
@@ -3627,6 +4513,7 @@ document.addEventListener('DOMContentLoaded', () => {
   <button class="bn-item" onclick="nav('roadmap')" data-view="roadmap"><span class="bn-icon">▶</span><span class="bn-label">Roadmap</span></button>
   <button class="bn-item" onclick="nav('brainstorm')" data-view="brainstorm"><span class="bn-icon">◉</span><span class="bn-label">Brainstorm</span></button>
   <button class="bn-item" onclick="nav('renders')" data-view="renders"><span class="bn-icon">⬡</span><span class="bn-label">Renders</span></button>
+  <button class="bn-item" onclick="nav('lab')" data-view="lab"><span class="bn-icon">◈</span><span class="bn-label">Lab</span></button>
 </div>
 
 <!-- EXPORT MODAL -->
@@ -3654,8 +4541,11 @@ document.addEventListener('DOMContentLoaded', () => {
   <div style="background:var(--panel);border:1px solid var(--border2);border-radius:4px;padding:20px;width:480px;max-width:94vw;box-shadow:0 8px 32px #000a">
     <h4 style="font-family:var(--font-display);font-size:12px;color:var(--purple);letter-spacing:2px;margin-bottom:12px">+ FROM CLAUDE</h4>
     <div style="font-size:9px;color:var(--txt3);margin-bottom:8px;letter-spacing:1px">PASTE JSON FROM CLAUDE — array of nodes</div>
-    <div style="font-size:9px;color:var(--txt3);margin-bottom:10px;background:var(--panel2);padding:8px;border-radius:2px;font-family:var(--font-ui);line-height:1.6">[{"type":"idea","title":"My Idea","notes":"details here"},<br>{"type":"feature","title":"Feature name","notes":"","link":"roadmap"}]</div>
-    <textarea id="bs-import-input" style="width:100%;height:120px;background:var(--panel2);border:1px solid var(--border2);color:var(--white);font-family:var(--font-ui);font-size:10px;padding:8px;border-radius:2px;outline:none;resize:vertical" placeholder='[{"type":"idea","title":"...","notes":"..."}]'></textarea>
+    <div style="font-size:9px;color:var(--txt3);margin-bottom:10px;background:var(--panel2);padding:8px;border-radius:2px;font-family:var(--font-ui);line-height:1.8">
+      <span style="color:var(--accent)">Simple array:</span> [{"type":"idea","title":"...","notes":"..."}]<br>
+      <span style="color:var(--purple)">With groups + wires:</span> {"groups":[{"title":"My Group"}], "nodes":[{"id":"a","type":"idea","title":"...","group":"My Group"}], "edges":[{"from":"a","to":"b","label":"connects"}]}
+    </div>
+    <textarea id="bs-import-input" style="width:100%;height:140px;background:var(--panel2);border:1px solid var(--border2);color:var(--white);font-family:var(--font-ui);font-size:10px;padding:8px;border-radius:2px;outline:none;resize:vertical" placeholder='[{"type":"idea","title":"...","notes":"..."}]'></textarea>
     <div id="bs-import-err" style="font-size:9px;color:var(--red);margin-top:6px;display:none"></div>
     <div style="display:flex;gap:8px;margin-top:12px">
       <button onclick="bsCloseImport()" style="flex:1;padding:8px;background:var(--panel2);border:1px solid var(--border2);color:var(--txt);font-family:var(--font-ui);font-size:9px;cursor:pointer;border-radius:2px;letter-spacing:1px">CANCEL</button>
