@@ -3950,14 +3950,23 @@ async function labRunTest() {
   LAB.claudeHistory = [{ role: 'user', content: prompt }];
   LAB.geminiHistory = [{ role: 'user', content: prompt }];
 
+  console.log('[lab] showing results area');
+  const resultsEl = document.getElementById('lab-results');
+  if (resultsEl) resultsEl.style.display = 'block';
+
   labAppendConvo('claude', 'user', '▶ NEW TEST RUN');
   labAppendConvo('gemini', 'user', '▶ NEW TEST RUN');
+
+  console.log('[lab] calling Claude and Gemini...');
 
   // Run both in parallel
   const [claudeRes, geminiRes] = await Promise.all([
     labCallClaude(prompt, temp),
     labCallGemini(prompt, temp),
   ]);
+
+  console.log('[lab] Claude response:', claudeRes?.substring(0, 100));
+  console.log('[lab] Gemini response:', geminiRes?.substring(0, 100));
 
   // Add responses to history
   LAB.claudeHistory.push({ role: 'assistant', content: claudeRes });
