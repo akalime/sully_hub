@@ -3929,6 +3929,72 @@ function labBuildPrompt() {
 
 // ── Run Test ──────────────────────────────────────────────
 
+// ── Conversation thread helpers ──────────────────────────────
+function labAppendConvo(panel, role, text) {
+  const el = document.getElementById('lab-' + panel + '-convo');
+  if (!el) return;
+  const msg = document.createElement('div');
+  msg.className = 'lab-convo-msg lab-convo-' + role;
+  msg.innerHTML = '<div class="lab-convo-role">' + (role === 'sully' ? 'SULLY' : role === 'user' ? 'YOU' : role) + '</div><div class="lab-convo-text">' + String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>') + '</div>';
+  el.appendChild(msg);
+  el.scrollTop = el.scrollHeight;
+}
+
+async function labReply(panel) {
+  const inputEl = document.getElementById('lab-' + panel + '-reply');
+  const reply = inputEl ? inputEl.value.trim() : '';
+  if (!reply) return;
+  inputEl.value = '';
+  labAppendConvo(panel, 'user', reply);
+  const history = panel === 'claude' ? LAB.claudeHistory : LAB.geminiHistory;
+  if (!history) return;
+  history.push({ role: 'user', content: reply });
+  labAppendConvo(panel, 'sully', '...');
+  const convoEl = document.getElementById('lab-' + panel + '-convo');
+  const typingMsg = convoEl ? convoEl.lastChild : null;
+  var response;
+  if (panel === 'claude') {
+    response = await labCallClaudeConvo(history);
+  } else {
+    response = await labCallGemini(reply, 0.7);
+  }
+  if (typingMsg && typingMsg.parentNode) typingMsg.parentNode.removeChild(typingMsg);
+  history.push({ role: 'assistant', content: response });
+  labAppendConvo(panel, 'sully', response);
+}
+
+function labResetConversation() {
+  LAB.claudeHistory = [];
+  LAB.geminiHistory = [];
+  var c = document.getElementById('lab-claude-convo');
+  var g = document.getElementById('lab-gemini-convo');
+  if (c) c.innerHTML = '';
+  if (g) g.innerHTML = '';
+}
+
+async function labCallClaudeConvo(history) {
+  try {
+    const { data: { session } } = await supa.auth.getSession();
+    const token = session ? session.access_token : null;
+    var messages = history.map(function(m) {
+      return { role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content };
+    });
+    const resp = await fetch(
+      'https://hmrnwvahkcoexjcxohel.supabase.co/functions/v1/sully-proxy',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ messages: messages, temperature: 0.7, max_tokens: 800 })
+      }
+    );
+    const data = await resp.json();
+    return data.text || data.error || '[No response]';
+  } catch(e) {
+    return '[Error: ' + e.message + ']';
+  }
+}
+
+
 async function labRunTest() {
   if (LAB.testRunning) return;
   LAB.testRunning = true;
