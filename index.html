@@ -698,6 +698,15 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
   .lab-mem-grid { grid-template-columns:1fr; }
 }
 
+
+/* ── API DOCS ── */
+.doc-section { margin-bottom:32px; }
+.doc-title { font-family:var(--font-display);font-size:12px;font-weight:700;letter-spacing:2px;margin-bottom:6px; }
+.doc-desc { font-size:9px;color:var(--txt3);letter-spacing:1px;margin-bottom:10px;line-height:1.6; }
+.doc-code { background:var(--panel2);border:1px solid var(--border2);border-radius:4px;padding:12px;font-family:var(--font-ui);font-size:9px;color:var(--txt2);white-space:pre-wrap;word-break:break-all;line-height:1.7;margin-bottom:8px; }
+.doc-copy-btn { background:var(--panel2);border:1px solid var(--border2);color:var(--txt2);font-family:var(--font-ui);font-size:9px;padding:5px 14px;cursor:pointer;border-radius:2px;letter-spacing:1px; }
+.doc-copy-btn:hover { border-color:var(--accent);color:var(--accent); }
+
 </style>
 </head>
 <body>
@@ -790,6 +799,10 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
         <div class="sb-dot" style="background:var(--purple)"></div>
         <span class="sb-label">Sully Lab</span>
         <span class="sb-count" style="background:#a855f718;color:var(--purple)">LAB</span>
+      </div>
+      <div class="sb-item" onclick="nav('docs')">
+        <div class="sb-dot" style="background:var(--blue)"></div>
+        <span class="sb-label">API Docs</span>
       </div>
     </div>
 
@@ -994,6 +1007,159 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
   </div>
 </div>
 
+      <div id="view-docs" class="view" style="overflow-y:auto;padding:20px">
+        <div style="max-width:800px;margin:0 auto">
+          <div style="font-family:var(--font-display);font-size:20px;font-weight:800;color:var(--accent);letter-spacing:3px;margin-bottom:4px">IMPORT API DOCS</div>
+          <div style="font-size:9px;color:var(--txt3);letter-spacing:2px;margin-bottom:32px">All JSON formats supported by the universal importer</div>
+
+          <!-- SCENARIO -->
+          <div class="doc-section">
+            <div class="doc-title" style="color:var(--accent)">SCENARIO</div>
+            <div class="doc-desc">Loads all sandbox fields for testing Sully. Only include fields you want to set.</div>
+            <pre class="doc-code" id="doc-scenario">{"type":"scenario",
+"stage":"Rally Iberia — Montclar",
+"mode":"training",
+"mood":"frustrated",
+"time":"521.4",
+"top_speed":"162",
+"dist":"12400",
+"brake":"0.81",
+"throttle":"0.68",
+"crashes":"0",
+"overlap":"8",
+"lifts":"3",
+"s1":"98.2","s2":"112.4","s3":"89.1","s4":"105.6","s5":"116.1",
+"smooth":"72",
+"steer":"44",
+"corrections":"12",
+"tyre_fl":"0.82","tyre_fr":"0.79","tyre_bl":"0.85","tyre_br":"0.81",
+"sessions":"14",
+"form":"7.2",
+"weaknesses":"trail braking hairpins",
+"strengths":"throttle exit, sector 1",
+"last_fix":"brake pressure at 1606m",
+"prev_time":"519.8",
+"extra":"Any extra context for this scenario"}</pre>
+            <button class="doc-copy-btn" onclick="docCopy('doc-scenario')">COPY</button>
+          </div>
+
+          <!-- IDENTITY -->
+          <div class="doc-section">
+            <div class="doc-title" style="color:var(--purple)">IDENTITY BLOCKS</div>
+            <div class="doc-desc">Adds blocks to Sully's identity in the Lab. Categories: voice, philosophy, psychology, redlines, examples.</div>
+            <pre class="doc-code" id="doc-identity">{"type":"identity",
+"blocks":[
+  {
+    "category":"voice",
+    "title":"Block title",
+    "content":"The actual content of this identity block...",
+    "priority":90,
+    "enabled":true
+  }
+]}</pre>
+            <button class="doc-copy-btn" onclick="docCopy('doc-identity')">COPY</button>
+          </div>
+
+          <!-- RULES -->
+          <div class="doc-section">
+            <div class="doc-title" style="color:var(--green)">RULES</div>
+            <div class="doc-desc">Adds behavioural IF/THEN rules to the Lab.</div>
+            <pre class="doc-code" id="doc-rules">{"type":"rules",
+"rules":[
+  {
+    "title":"Rule name",
+    "condition":"IF this condition is true",
+    "action":"THEN do this action",
+    "priority":90,
+    "enabled":true
+  }
+]}</pre>
+            <button class="doc-copy-btn" onclick="docCopy('doc-rules')">COPY</button>
+          </div>
+
+          <!-- FEATURES -->
+          <div class="doc-section">
+            <div class="doc-title" style="color:var(--amber)">FEATURES</div>
+            <div class="doc-desc">Adds features to the Feature Status tab. Statuses: working, broken, partial, planned, retired.</div>
+            <pre class="doc-code" id="doc-features">{"type":"features",
+"features":[
+  {
+    "group_name":"Group Name",
+    "name":"Feature name",
+    "status":"working",
+    "note":"Optional description"
+  }
+]}</pre>
+            <button class="doc-copy-btn" onclick="docCopy('doc-features')">COPY</button>
+          </div>
+
+          <!-- NODES -->
+          <div class="doc-section">
+            <div class="doc-title" style="color:var(--accent)">BRAINSTORM NODES</div>
+            <div class="doc-desc">Adds nodes, groups and connections to the Brainstorm canvas. Node types: idea, feature, bug, ui, note, html, group.</div>
+            <pre class="doc-code" id="doc-nodes">{"type":"nodes",
+"groups":[
+  {"title":"Group Name","w":500,"h":280}
+],
+"nodes":[
+  {
+    "id":"node_a",
+    "type":"idea",
+    "title":"Node title",
+    "notes":"Node description",
+    "group":"Group Name"
+  },
+  {
+    "id":"node_b",
+    "type":"feature",
+    "title":"Another node",
+    "notes":"Description"
+  }
+],
+"edges":[
+  {"from":"node_a","to":"node_b","label":"connects to"}
+]}</pre>
+            <button class="doc-copy-btn" onclick="docCopy('doc-nodes')">COPY</button>
+          </div>
+
+          <!-- LAB SESSION -->
+          <div class="doc-section">
+            <div class="doc-title" style="color:var(--purple)">LAB SESSION — EVERYTHING AT ONCE</div>
+            <div class="doc-desc">The most powerful format. Loads scenario + identity + rules + nodes in a single paste. Use this when Claude sends you a full session package.</div>
+            <pre class="doc-code" id="doc-lab-session">{"type":"lab_session",
+"scenario":{
+  "stage":"Rally Iberia",
+  "mood":"frustrated",
+  "brake":"0.81",
+  "extra":"Test scenario description"
+},
+"identity":[
+  {
+    "category":"voice",
+    "title":"Block title",
+    "content":"Content...",
+    "priority":90
+  }
+],
+"rules":[
+  {
+    "title":"Rule name",
+    "condition":"IF condition",
+    "action":"THEN action",
+    "priority":88
+  }
+],
+"nodes":{
+  "groups":[{"title":"Group"}],
+  "nodes":[{"id":"a","type":"idea","title":"Node","group":"Group"}],
+  "edges":[]
+}}</pre>
+            <button class="doc-copy-btn" onclick="docCopy('doc-lab-session')">COPY</button>
+          </div>
+
+        </div>
+      </div>
+
 <!-- RENDERS VIEWER -->
 <div id="rd-viewer" style="display:none;position:fixed;inset:0;z-index:5000;background:#000000ee;flex-direction:column">
   <div style="display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--panel);flex-shrink:0">
@@ -1091,7 +1257,7 @@ function nav(view) {
   document.querySelectorAll('.bn-item').forEach(i => i.classList.remove('active'));
   const bnActive = document.querySelector(`.bn-item[data-view="${view}"]`);
   if (bnActive) bnActive.classList.add('active');
-  const titles = {dashboard:'Dashboard',docs:'All Documents',bugs:'Known Bugs',features:'Feature Status',roadmap:'Roadmap',changelog:'Changelog',decisions:'Decisions',cleanup:'Cleanup List',brainstorm:'Brainstorm',renders:'Renders',lab:'Sully Lab'};
+  const titles = {dashboard:'Dashboard',docs:'All Documents',bugs:'Known Bugs',features:'Feature Status',roadmap:'Roadmap',changelog:'Changelog',decisions:'Decisions',cleanup:'Cleanup List',brainstorm:'Brainstorm',renders:'Renders',lab:'Sully Lab',docs:'API Docs'};
   document.getElementById('tb-title').textContent = titles[view] || view;
   if(view === 'bugs') renderBugs();
   if(view === 'features') renderFeatures();
@@ -4616,6 +4782,41 @@ function labShowLoading(show) {
 
 
 
+// ── Doc helpers ──────────────────────────────────────────
+function docCopy(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  navigator.clipboard.writeText(el.textContent).then(function() {
+    showToast('Copied to clipboard', 'success');
+  }).catch(function() {
+    // Fallback
+    var ta = document.createElement('textarea');
+    ta.value = el.textContent;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('Copied', 'success');
+  });
+}
+
+const IMPORT_TEMPLATES = {
+  scenario: '{"type":"scenario",\n"stage":"Rally Iberia — Montclar",\n"mode":"training",\n"mood":"frustrated",\n"time":"521.4",\n"brake":"0.81",\n"throttle":"0.68",\n"crashes":"0",\n"s1":"98.2","s2":"112.4","s3":"89.1","s4":"105.6","s5":"116.1",\n"smooth":"72","steer":"44",\n"weaknesses":"trail braking",\n"extra":"Describe the scenario here"}',
+  identity: '{"type":"identity",\n"blocks":[\n  {\n    "category":"voice",\n    "title":"Block title",\n    "content":"The content of this identity block...",\n    "priority":90\n  }\n]}',
+  rules: '{"type":"rules",\n"rules":[\n  {\n    "title":"Rule name",\n    "condition":"IF this happens",\n    "action":"THEN do this",\n    "priority":90\n  }\n]}',
+  features: '{"type":"features",\n"features":[\n  {\n    "group_name":"Group Name",\n    "name":"Feature name",\n    "status":"working",\n    "note":"Description"\n  }\n]}',
+  nodes: '{"type":"nodes",\n"groups":[{"title":"Group Name","w":500,"h":280}],\n"nodes":[\n  {"id":"a","type":"idea","title":"Node title","notes":"Description","group":"Group Name"},\n  {"id":"b","type":"feature","title":"Another node","notes":"Description"}\n],\n"edges":[\n  {"from":"a","to":"b","label":"connects to"}\n]}',
+  lab_session: '{"type":"lab_session",\n"scenario":{"stage":"Rally Iberia","mood":"frustrated","brake":"0.81"},\n"identity":[{"category":"voice","title":"Title","content":"Content...","priority":90}],\n"rules":[{"title":"Rule","condition":"IF condition","action":"THEN action","priority":88}]}'
+};
+
+function loadImportTemplate(type) {
+  var inp = document.getElementById('universal-import-input');
+  if (!inp) return;
+  inp.value = IMPORT_TEMPLATES[type] || '';
+  // Trigger preview update
+  inp.dispatchEvent(new Event('input'));
+}
+
 // ══════════════════════════════════════════════════════════
 // UNIVERSAL IMPORT SYSTEM
 // ══════════════════════════════════════════════════════════
@@ -4684,16 +4885,19 @@ async function doUniversalImport() {
         if (parsed[0] && (parsed[0].type || parsed[0].title)) {
           results.push(_importBrainstorm({nodes: parsed}));
         } else {
-          errEl.textContent = 'Unknown array format. Add "type" field: scenario, identity, rules, nodes, lab_session';
+          errEl.textContent = 'Unknown array format. Add "type" field: scenario, identity, features, rules, nodes, lab_session';
           errEl.style.display = 'block';
           return;
         }
       } else {
+        // Try as features array
+        if (parsed.features && Array.isArray(parsed.features)) {
+          results.push(await _importFeatures(parsed));
         // Try as scenario (has stage/brake/time fields)
-        if (parsed.stage || parsed.brake || parsed.time || parsed.mode) {
+        } else if (parsed.stage || parsed.brake || parsed.time || parsed.mode) {
           results.push(_importScenario(parsed));
         } else {
-          errEl.textContent = 'Unknown type. Add "type" field: scenario, identity, rules, nodes, lab_session';
+          errEl.textContent = 'Unknown type. Add "type" field: scenario, identity, features, rules, nodes, lab_session';
           errEl.style.display = 'block';
           return;
         }
@@ -5231,6 +5435,7 @@ document.addEventListener('DOMContentLoaded', () => {
   <button class="bn-item" onclick="nav('brainstorm')" data-view="brainstorm"><span class="bn-icon">◉</span><span class="bn-label">Brainstorm</span></button>
   <button class="bn-item" onclick="nav('renders')" data-view="renders"><span class="bn-icon">⬡</span><span class="bn-label">Renders</span></button>
   <button class="bn-item" onclick="nav('lab')" data-view="lab"><span class="bn-icon">◈</span><span class="bn-label">Lab</span></button>
+  <button class="bn-item" onclick="nav('docs')" data-view="docs"><span class="bn-icon">?</span><span class="bn-label">Docs</span></button>
 </div>
 
 <!-- EXPORT MODAL -->
@@ -5311,6 +5516,7 @@ Keep titles under 5 words. Notes under 15 words. Be generous with nodes — bett
     <div style="display:flex;align-items:center;gap:10px">
       <div style="font-family:var(--font-display);font-size:13px;font-weight:700;color:var(--purple);letter-spacing:2px">&#x2B07; IMPORT FROM CLAUDE</div>
       <div style="flex:1"></div>
+      <button onclick="closeUniversalImport();nav('docs')" style="background:none;border:1px solid var(--border2);color:var(--txt2);font-size:9px;padding:4px 10px;cursor:pointer;border-radius:2px;letter-spacing:1px;margin-right:8px">? DOCS</button>
       <button onclick="closeUniversalImport()" style="background:none;border:none;color:var(--txt3);font-size:18px;cursor:pointer;line-height:1">&#x2715;</button>
     </div>
     <div style="font-size:9px;color:var(--txt3);line-height:1.7;background:var(--panel2);padding:10px;border-radius:3px">
@@ -5319,6 +5525,17 @@ Keep titles under 5 words. Notes under 15 words. Be generous with nodes — bett
       <span style="color:var(--purple)">identity/rules</span> &rarr; Lab &nbsp;&#xb7;&nbsp;
       <span style="color:var(--green)">nodes</span> &rarr; Brainstorm &nbsp;&#xb7;&nbsp;
       <span style="color:var(--amber)">lab_session</span> &rarr; Everything at once
+    </div>
+    <div style="margin-bottom:8px">
+      <div style="font-size:7px;color:var(--txt3);letter-spacing:2px;margin-bottom:6px">TEMPLATES — tap to load</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px">
+        <button onclick="loadImportTemplate('scenario')" style="font-size:8px;padding:3px 10px;background:var(--panel2);border:1px solid var(--border2);color:var(--accent);cursor:pointer;border-radius:2px;letter-spacing:1px">SCENARIO</button>
+        <button onclick="loadImportTemplate('identity')" style="font-size:8px;padding:3px 10px;background:var(--panel2);border:1px solid var(--border2);color:var(--purple);cursor:pointer;border-radius:2px;letter-spacing:1px">IDENTITY</button>
+        <button onclick="loadImportTemplate('rules')" style="font-size:8px;padding:3px 10px;background:var(--panel2);border:1px solid var(--border2);color:var(--green);cursor:pointer;border-radius:2px;letter-spacing:1px">RULES</button>
+        <button onclick="loadImportTemplate('features')" style="font-size:8px;padding:3px 10px;background:var(--panel2);border:1px solid var(--border2);color:var(--amber);cursor:pointer;border-radius:2px;letter-spacing:1px">FEATURES</button>
+        <button onclick="loadImportTemplate('nodes')" style="font-size:8px;padding:3px 10px;background:var(--panel2);border:1px solid var(--border2);color:var(--accent);cursor:pointer;border-radius:2px;letter-spacing:1px">NODES</button>
+        <button onclick="loadImportTemplate('lab_session')" style="font-size:8px;padding:3px 10px;background:var(--panel2);border:1px solid var(--purple);color:var(--purple);cursor:pointer;border-radius:2px;letter-spacing:1px">LAB SESSION</button>
+      </div>
     </div>
     <textarea id="universal-import-input" style="width:100%;height:200px;background:var(--panel2);border:1px solid var(--border2);color:var(--white);font-family:var(--font-ui);font-size:10px;padding:10px;border-radius:3px;outline:none;resize:vertical;line-height:1.6" placeholder='Paste JSON from Claude here...
 
