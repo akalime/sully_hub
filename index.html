@@ -3248,6 +3248,8 @@ const RD = {
 const RD_BUCKET = 'hub-renders';
 const RD_PREFIX = 'renders/';  // separate from brainstorm/ uploads
 
+function rdRefresh() { rdLoad(); }
+
 async function rdInit() {
   await rdLoad();
 }
