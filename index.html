@@ -707,6 +707,19 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
 .doc-copy-btn { background:var(--panel2);border:1px solid var(--border2);color:var(--txt2);font-family:var(--font-ui);font-size:9px;padding:5px 14px;cursor:pointer;border-radius:2px;letter-spacing:1px; }
 .doc-copy-btn:hover { border-color:var(--accent);color:var(--accent); }
 
+
+/* ── SULLY BUILDS ── */
+.lab-build-card { background:var(--panel);border:1px solid var(--border2);border-radius:4px;padding:14px;margin-bottom:10px;transition:border-color .15s; }
+.lab-build-card.active { border-color:var(--accent); }
+.lab-build-header { display:flex;align-items:center;gap:8px;margin-bottom:6px; }
+.lab-build-dot { width:8px;height:8px;border-radius:50%;flex-shrink:0; }
+.lab-build-name { font-size:13px;font-family:var(--font-display);font-weight:700;color:var(--white);flex:1; }
+.lab-build-active-chip { font-size:7px;padding:2px 8px;background:var(--accent);color:var(--bg);border-radius:2px;letter-spacing:1px;font-weight:700; }
+.lab-build-style { font-size:8px;letter-spacing:2px;font-weight:700; }
+.lab-build-desc { font-size:9px;color:var(--txt2);margin-bottom:6px;line-height:1.5; }
+.lab-build-meta { display:flex;gap:8px;font-size:8px;color:var(--txt3);letter-spacing:1px;margin-bottom:10px; }
+.lab-build-actions { display:flex;gap:6px; }
+
 </style>
 </head>
 <body>
@@ -970,6 +983,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
           <button class="lab-tab-btn" data-tab="rules" onclick="labSwitchTab('rules')">RULES</button>
           <button class="lab-tab-btn" data-tab="memory" onclick="labSwitchTab('memory')">MEMORY</button>
           <button class="lab-tab-btn" data-tab="sandbox" onclick="labSwitchTab('sandbox')">SANDBOX</button>
+          <button class="lab-tab-btn" data-tab="builds" onclick="labSwitchTab('builds')">BUILDS</button>
           <button class="lab-tab-btn" data-tab="history" onclick="labSwitchTab('history')">HISTORY</button>
         </div>
         <div id="lab-content"></div>
@@ -3902,6 +3916,7 @@ function labRenderActiveTab() {
     case 'rules':     content.innerHTML = labRenderRules();     break;
     case 'memory':    content.innerHTML = labRenderMemory();    break;
     case 'sandbox':   content.innerHTML = labRenderSandbox();   break;
+    case 'builds':   content.innerHTML = labRenderBuilds();    labLoadBuilds(); break;
     case 'history':   content.innerHTML = labRenderHistory();   break;
   }
 }
@@ -5098,6 +5113,224 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 });
+
+
+
+// ══════════════════════════════════════════════════════════
+// SULLY BUILDS SYSTEM
+// ══════════════════════════════════════════════════════════
+
+LAB.builds = [];
+
+function labRenderBuilds() {
+  var html = '<div class="lab-section-header">';
+  html += '<div><div class="lab-section-title">SULLY BUILDS</div>';
+  html += '<div class="lab-section-sub">Save complete personality snapshots. Switch between coaching styles.</div></div>';
+  html += '<button class="lab-btn lab-btn-accent" onclick="labSaveNewBuild()">+ SAVE CURRENT BUILD</button>';
+  html += '</div>';
+  html += '<div id="lab-builds-list"><div class="lab-empty-large">Loading builds...</div></div>';
+  return html;
+}
+
+async function labLoadBuilds() {
+  if (!LAB.uid) return;
+  const { data, error } = await supa.from('sully_builds')
+    .select('*').eq('user_id', LAB.uid).order('updated_at', {ascending: false});
+  if (error) { showToast('Failed to load builds: ' + error.message, 'error'); return; }
+  LAB.builds = data || [];
+  labRenderBuildsList();
+}
+
+function labRenderBuildsList() {
+  const el = document.getElementById('lab-builds-list');
+  if (!el) return;
+
+  if (!LAB.builds.length) {
+    el.innerHTML = '<div class="lab-empty-large">No builds saved yet.<br><br>Save your current identity + rules as a named build to get started.</div>';
+    return;
+  }
+
+  const styleColors = {
+    rally: 'var(--green)', circuit: 'var(--accent)', drift: 'var(--amber)',
+    sim: 'var(--purple)', beginner: 'var(--blue)', other: 'var(--txt2)'
+  };
+
+  var html = LAB.builds.map(function(b) {
+    var color = styleColors[b.racing_style] || styleColors.other;
+    var identityCount = (b.identity_snapshot || []).length;
+    var rulesCount = (b.rules_snapshot || []).length;
+    var date = new Date(b.updated_at).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'2-digit'});
+    return '<div class="lab-build-card' + (b.is_active ? ' active' : '') + '">' +
+      '<div class="lab-build-header">' +
+      '<div class="lab-build-dot" style="background:' + color + '"></div>' +
+      '<div class="lab-build-name">' + b.name + '</div>' +
+      (b.is_active ? '<div class="lab-build-active-chip">ACTIVE</div>' : '') +
+      '<div class="lab-build-style" style="color:' + color + '">' + (b.racing_style || 'rally').toUpperCase() + '</div>' +
+      '</div>' +
+      (b.description ? '<div class="lab-build-desc">' + b.description + '</div>' : '') +
+      '<div class="lab-build-meta">' +
+      '<span>' + identityCount + ' identity blocks</span>' +
+      '<span>·</span>' +
+      '<span>' + rulesCount + ' rules</span>' +
+      '<span>·</span>' +
+      '<span>' + date + '</span>' +
+      '</div>' +
+      '<div class="lab-build-actions">' +
+      '<button class="lab-act-btn" style="color:var(--green)" onclick="labLoadBuild(\'' + b.id + '\')">⬇ LOAD</button>' +
+      '<button class="lab-act-btn" onclick="labUpdateBuild(\'' + b.id + '\')">↑ UPDATE</button>' +
+      '<button class="lab-act-btn" onclick="labExportBuild(\'' + b.id + '\')">EXPORT</button>' +
+      '<button class="lab-act-btn lab-act-del" onclick="labDeleteBuild(\'' + b.id + '\')">✕</button>' +
+      '</div>' +
+      '</div>';
+  }).join('');
+
+  el.innerHTML = html;
+}
+
+async function labSaveNewBuild() {
+  labOpenModal('SAVE BUILD', [
+    {label:'Build name', key:'name', type:'input', val:'WRC Gravel Sully'},
+    {label:'Racing style', key:'racing_style', type:'select', options:['rally','circuit','drift','sim','beginner','other'], val:'rally'},
+    {label:'Description', key:'description', type:'input', val:''},
+  ], async function(data) {
+    if (!data.name) { showToast('Name required', 'error'); return; }
+
+    // Snapshot current identity + rules
+    const identitySnapshot = LAB.identity.filter(function(i){ return i.enabled; }).map(function(i){
+      return { category: i.category, title: i.title, content: i.content, priority: i.priority, enabled: i.enabled };
+    });
+    const rulesSnapshot = LAB.rules.filter(function(r){ return r.enabled; }).map(function(r){
+      return { title: r.title, condition: r.condition, action: r.action, priority: r.priority, enabled: r.enabled };
+    });
+
+    // Set all other builds as inactive
+    await supa.from('sully_builds').update({ is_active: false }).eq('user_id', LAB.uid);
+
+    const { data: build, error } = await supa.from('sully_builds').insert({
+      user_id: LAB.uid,
+      name: data.name,
+      description: data.description || '',
+      racing_style: data.racing_style,
+      identity_snapshot: identitySnapshot,
+      rules_snapshot: rulesSnapshot,
+      is_active: true,
+    }).select().single();
+
+    if (error) { showToast('Save failed: ' + error.message, 'error'); return; }
+    LAB.builds.unshift(build);
+    labRenderBuildsList();
+    showToast('Build saved — ' + identitySnapshot.length + ' identity blocks, ' + rulesSnapshot.length + ' rules', 'success');
+  });
+}
+
+async function labLoadBuild(id) {
+  const build = LAB.builds.find(function(b){ return b.id === id; });
+  if (!build) return;
+
+  if (!confirm('Load "' + build.name + '"? This will replace your current identity and rules.')) return;
+
+  // Clear current identity and rules from DB
+  await supa.from('sully_identity').delete().eq('user_id', LAB.uid);
+  await supa.from('sully_rules').delete().eq('user_id', LAB.uid);
+
+  // Insert identity blocks from snapshot
+  var identityRows = (build.identity_snapshot || []).map(function(block) {
+    return {
+      user_id: LAB.uid,
+      category: block.category || 'voice',
+      title: block.title || 'Imported',
+      content: block.content || '',
+      priority: block.priority || 50,
+      enabled: block.enabled !== false
+    };
+  });
+
+  var rulesRows = (build.rules_snapshot || []).map(function(rule) {
+    return {
+      user_id: LAB.uid,
+      title: rule.title || 'Imported rule',
+      condition: rule.condition || '',
+      action: rule.action || '',
+      priority: rule.priority || 50,
+      enabled: rule.enabled !== false
+    };
+  });
+
+  var inserted = 0;
+  if (identityRows.length) {
+    const { data: newIdentity, error } = await supa.from('sully_identity').insert(identityRows).select();
+    if (!error) { LAB.identity = newIdentity; inserted += newIdentity.length; }
+  } else { LAB.identity = []; }
+
+  if (rulesRows.length) {
+    const { data: newRules, error } = await supa.from('sully_rules').insert(rulesRows).select();
+    if (!error) { LAB.rules = newRules; inserted += newRules.length; }
+  } else { LAB.rules = []; }
+
+  // Mark as active
+  await supa.from('sully_builds').update({ is_active: false }).eq('user_id', LAB.uid);
+  await supa.from('sully_builds').update({ is_active: true }).eq('id', id);
+  LAB.builds.forEach(function(b){ b.is_active = b.id === id; });
+
+  labRenderBuildsList();
+  labRenderMemoryBar();
+  showToast('Loaded "' + build.name + '" — ' + inserted + ' blocks inserted', 'success');
+}
+
+async function labUpdateBuild(id) {
+  const build = LAB.builds.find(function(b){ return b.id === id; });
+  if (!build) return;
+
+  const identitySnapshot = LAB.identity.filter(function(i){ return i.enabled; }).map(function(i){
+    return { category: i.category, title: i.title, content: i.content, priority: i.priority, enabled: i.enabled };
+  });
+  const rulesSnapshot = LAB.rules.filter(function(r){ return r.enabled; }).map(function(r){
+    return { title: r.title, condition: r.condition, action: r.action, priority: r.priority, enabled: r.enabled };
+  });
+
+  const { error } = await supa.from('sully_builds').update({
+    identity_snapshot: identitySnapshot,
+    rules_snapshot: rulesSnapshot,
+    updated_at: new Date().toISOString()
+  }).eq('id', id);
+
+  if (error) { showToast('Update failed: ' + error.message, 'error'); return; }
+  build.identity_snapshot = identitySnapshot;
+  build.rules_snapshot = rulesSnapshot;
+  build.updated_at = new Date().toISOString();
+  labRenderBuildsList();
+  showToast('Build updated — ' + identitySnapshot.length + ' identity, ' + rulesSnapshot.length + ' rules', 'success');
+}
+
+function labExportBuild(id) {
+  const build = LAB.builds.find(function(b){ return b.id === id; });
+  if (!build) return;
+
+  const exportObj = {
+    type: 'lab_session',
+    _build_name: build.name,
+    _racing_style: build.racing_style,
+    _exported: new Date().toISOString(),
+    identity: build.identity_snapshot || [],
+    rules: build.rules_snapshot || []
+  };
+
+  const json = JSON.stringify(exportObj, null, 2);
+  navigator.clipboard.writeText(json).then(function() {
+    showToast('Build copied to clipboard — paste into any hub import', 'success');
+  });
+}
+
+async function labDeleteBuild(id) {
+  const build = LAB.builds.find(function(b){ return b.id === id; });
+  if (!build) return;
+  if (!confirm('Delete "' + build.name + '"? This cannot be undone.')) return;
+
+  await supa.from('sully_builds').delete().eq('id', id);
+  LAB.builds = LAB.builds.filter(function(b){ return b.id !== id; });
+  labRenderBuildsList();
+  showToast('Build deleted', 'success');
+}
 
 
 // ══════════════════════════════════════════════════════════
