@@ -720,6 +720,31 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
 .lab-build-meta { display:flex;gap:8px;font-size:8px;color:var(--txt3);letter-spacing:1px;margin-bottom:10px; }
 .lab-build-actions { display:flex;gap:6px; }
 
+
+.doc-nav-btn { font-size:9px;padding:4px 12px;background:var(--panel2);border:1px solid var(--border2);color:var(--txt2);cursor:pointer;border-radius:2px;letter-spacing:1px;text-decoration:none;display:inline-block; }
+.doc-nav-btn:hover { border-color:var(--accent);color:var(--accent); }
+.doc-field-table { border:1px solid var(--border2);border-radius:4px;overflow:hidden;margin-bottom:12px; }
+.doc-field-row { display:grid;grid-template-columns:180px 70px 1fr 2fr;gap:0;padding:7px 12px;border-bottom:1px solid var(--border);font-size:9px; }
+.doc-field-row:last-child { border-bottom:none; }
+.doc-field-header { background:var(--panel2);font-size:7px;color:var(--txt3);letter-spacing:2px; }
+.doc-field-row span:first-child { color:var(--white); }
+.doc-field-row span:nth-child(2) { color:var(--txt3); }
+.doc-field-row span:nth-child(3) { color:var(--accent);font-size:8px; }
+.doc-field-row span:nth-child(4) { color:var(--txt2); }
+.doc-field-req { color:var(--red) !important; }
+.doc-field-sub { background:#ffffff05;padding-left:24px !important; }
+.doc-field-sub span:first-child { color:var(--txt2) !important; }
+.doc-cat-guide { background:var(--panel2);border-radius:4px;padding:10px 12px;margin-bottom:12px; }
+.doc-cat-title { font-size:7px;color:var(--txt3);letter-spacing:2px;margin-bottom:8px; }
+.doc-cat-row { display:flex;gap:12px;padding:4px 0;border-bottom:1px solid var(--border);font-size:9px; }
+.doc-cat-row:last-child { border-bottom:none; }
+.doc-cat-row span:first-child { width:80px;flex-shrink:0;font-weight:700; }
+.doc-cat-row span:last-child { color:var(--txt2); }
+@media(max-width:600px) {
+  .doc-field-row { grid-template-columns:1fr 1fr;gap:4px; }
+  .doc-field-row span:nth-child(3), .doc-field-row span:nth-child(4) { grid-column:1/-1; }
+}
+
 </style>
 </head>
 <body>
@@ -889,286 +914,179 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
       </div>
 
       <!-- DOCS -->
-      <div id="view-docs" class="view">
-        <div id="docs-grid"></div>
-      </div>
-
-      <!-- BUGS -->
-      <div id="view-bugs" class="view">
-        <div class="filter-bar">
-          <button class="filter-btn active" onclick="filterBugs('all',this)">ALL</button>
-          <button class="filter-btn" onclick="filterBugs('critical',this)">🔴 CRITICAL</button>
-          <button class="filter-btn" onclick="filterBugs('significant',this)">🟡 SIGNIFICANT</button>
-          <button class="filter-btn" onclick="filterBugs('minor',this)">🟠 MINOR</button>
-          <button class="filter-btn" onclick="filterBugs('open',this)">OPEN</button>
-          <button class="filter-btn" onclick="filterBugs('fixed',this)">FIXED</button>
-          <div class="filter-spacer"></div>
-          <button class="tb-btn admin-only" onclick="openAddBug()">+ ADD BUG</button>
-        </div>
-        <div id="bugs-body"></div>
-      </div>
-
-      <!-- FEATURES -->
-      <div id="view-features" class="view">
-        <div class="filter-bar">
-          <button class="filter-btn active" onclick="filterFeats('all',this)">ALL</button>
-          <button class="filter-btn" onclick="filterFeats('working',this)">✅ WORKING</button>
-          <button class="filter-btn" onclick="filterFeats('broken',this)">❌ BROKEN</button>
-          <button class="filter-btn" onclick="filterFeats('partial',this)">⚠ PARTIAL</button>
-          <button class="filter-btn" onclick="filterFeats('planned',this)">🔲 PLANNED</button>
-          <button class="filter-btn" onclick="filterFeats('retired',this)">🗑 RETIRED</button>
-          <div class="filter-spacer"></div>
-          <span class="filter-count" id="feat-count">52 features</span>
-        </div>
-        <div id="features-body"></div>
-      </div>
-
-      <!-- ROADMAP -->
-      <div id="view-roadmap" class="view">
-        <div class="filter-bar">
-          <button class="filter-btn active" onclick="filterTasks('all',this)">ALL SPRINTS</button>
-          <button class="filter-btn" onclick="filterTasks('open',this)">OPEN</button>
-          <button class="filter-btn" onclick="filterTasks('done',this)">DONE</button>
-          <div class="filter-spacer"></div>
-          <span class="filter-count" id="task-count"></span>
-          <button class="tb-btn admin-only" onclick="openAddTask()">+ ADD TASK</button>
-        </div>
-        <div id="roadmap-body"></div>
-      </div>
-
-      <!-- CHANGELOG -->
-      <div id="view-changelog" class="view">
-        <div id="changelog-body"></div>
-      </div>
-
-      <!-- DECISIONS -->
-      <div id="view-decisions" class="view">
-        <div id="decisions-body" style="flex:1;overflow:auto;padding:14px 16px"></div>
-      </div>
-
-      <!-- CLEANUP -->
-      <div id="view-cleanup" class="view">
-        <div id="cleanup-body" style="flex:1;overflow:auto;padding:14px 16px"></div>
-      </div>
-
-      <div id="view-brainstorm" class="view" style="position:relative;overflow:hidden;padding:0">
-        <div id="bs-toolbar" style="position:absolute;top:12px;left:12px;z-index:100;display:flex;gap:6px;align-items:center">
-          <button class="bs-btn admin-only" onclick="bsAddNode()">+ NODE</button>
-          <button class="bs-btn admin-only" onclick="bsAddGroup()">+ GROUP</button>
-          <button class="bs-btn bs-btn-purple admin-only" onclick="bsToggleConnect()" id="bs-connect-btn">⟷ CONNECT</button>
-          <button class="bs-btn admin-only" onclick="bsClearCanvas()" style="color:var(--red)">CLEAR</button>
-          <button class="bs-btn admin-only" style="border-color:var(--purple);color:var(--purple)" onclick="bsOpenImport()">+ FROM CLAUDE</button>
-          <button class="bs-btn admin-only" style="border-color:var(--txt2);color:var(--txt2)" onclick="bsOpenPrompt()">⊡ PROMPT</button>
-          <span style="font-size:9px;color:var(--txt3);margin-left:8px" id="bs-status">Click canvas to pan · Drag nodes to move · Right-click node for options</span>
-        </div>
-        <canvas id="bs-canvas" style="touch-action:none"></canvas>
-      </div>
-
-      <div id="view-renders" class="view" style="flex-direction:column;overflow:hidden">
-        <div id="rd-toolbar" style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center;flex-shrink:0">
-          <button class="bs-btn admin-only" onclick="rdNewFolder()">+ FOLDER</button>
-          <button class="bs-btn admin-only" onclick="rdUpload()" id="rd-upload-btn">↑ UPLOAD</button>
-          <input type="file" id="rd-file-input" multiple accept="*/*" style="display:none" onchange="rdHandleUpload(event)">
-          <div id="rd-breadcrumb" style="flex:1;font-size:10px;color:var(--txt3);letter-spacing:1px"></div>
-          <div id="rd-status" style="font-size:9px;color:var(--txt3)"></div>
-        </div>
-        <div id="rd-grid" style="flex:1;overflow-y:auto;padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;align-content:start"></div>
-      </div>
-
-      <div id="view-lab" class="view" style="position:relative">
-        <div id="lab-loading">LOADING SULLY LAB...</div>
-        <div id="lab-memory-bar"></div>
-        <div id="lab-tabs">
-          <button class="lab-tab-btn active" data-tab="identity" onclick="labSwitchTab('identity')">IDENTITY</button>
-          <button class="lab-tab-btn" data-tab="rules" onclick="labSwitchTab('rules')">RULES</button>
-          <button class="lab-tab-btn" data-tab="memory" onclick="labSwitchTab('memory')">MEMORY</button>
-          <button class="lab-tab-btn" data-tab="sandbox" onclick="labSwitchTab('sandbox')">SANDBOX</button>
-          <button class="lab-tab-btn" data-tab="builds" onclick="labSwitchTab('builds')">BUILDS</button>
-          <button class="lab-tab-btn" data-tab="history" onclick="labSwitchTab('history')">HISTORY</button>
-        </div>
-        <div id="lab-content"></div>
-        <!-- Permanent results area — survives tab switches -->
-        <div id="lab-results" class="lab-results-area" style="display:none;padding:0 20px 20px">
-          <div class="lab-results-header">
-            <div class="lab-results-title">CONVERSATION</div>
-            <div id="lab-rules-fired" class="lab-rules-fired"></div>
-            <button class="lab-act-btn" onclick="labResetConversation()">RESET</button>
-          </div>
-          <div class="lab-results-grid">
-            <div class="lab-result-panel">
-              <div class="lab-result-label" style="color:var(--accent)">⬡ CLAUDE</div>
-              <div id="lab-claude-convo" class="lab-convo-thread"></div>
-              <div class="lab-convo-input-row">
-                <input id="lab-claude-reply" class="lab-input" placeholder="Reply to Sully..." onkeydown="if(event.key==='Enter')labReply('claude')">
-                <button class="lab-act-btn" onclick="labReply('claude')" style="flex-shrink:0">SEND</button>
-              </div>
-              <div class="lab-result-actions"><button class="lab-act-btn" onclick="labCapture('claude')">CAPTURE CORRECTION</button></div>
-            </div>
-            <div class="lab-result-panel">
-              <div class="lab-result-label" style="color:var(--amber)">◈ GEMINI</div>
-              <div id="lab-gemini-convo" class="lab-convo-thread"></div>
-              <div class="lab-convo-input-row">
-                <input id="lab-gemini-reply" class="lab-input" placeholder="Reply to Sully..." onkeydown="if(event.key==='Enter')labReply('gemini')">
-                <button class="lab-act-btn" onclick="labReply('gemini')" style="flex-shrink:0">SEND</button>
-              </div>
-              <div class="lab-result-actions"><button class="lab-act-btn" onclick="labCapture('gemini')">CAPTURE CORRECTION</button></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-    </div>
-  </div>
-</div>
-
       <div id="view-docs" class="view" style="overflow-y:auto;padding:20px">
-        <div style="max-width:800px;margin:0 auto">
-          <div style="font-family:var(--font-display);font-size:20px;font-weight:800;color:var(--accent);letter-spacing:3px;margin-bottom:4px">IMPORT API DOCS</div>
-          <div style="font-size:9px;color:var(--txt3);letter-spacing:2px;margin-bottom:32px">All JSON formats supported by the universal importer</div>
+        <div style="max-width:860px;margin:0 auto">
+
+          <div style="font-family:var(--font-display);font-size:20px;font-weight:800;color:var(--accent);letter-spacing:3px;margin-bottom:4px">JSON REFERENCE</div>
+          <div style="font-size:9px;color:var(--txt3);letter-spacing:2px;margin-bottom:8px">Complete field reference for writing import JSON by hand</div>
+          <div style="font-size:9px;color:var(--txt2);margin-bottom:32px;line-height:1.7;background:var(--panel2);padding:10px;border-radius:3px">
+            Every JSON you paste into the importer needs a <span style="color:var(--accent)">"type"</span> field. Everything else is optional unless marked <span style="color:var(--red)">required</span>.
+            Fields you omit are ignored — only set what you want to change.
+          </div>
+
+          <!-- NAV -->
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:32px">
+            <a href="#doc-scenario" class="doc-nav-btn">SCENARIO</a>
+            <a href="#doc-identity" class="doc-nav-btn">IDENTITY</a>
+            <a href="#doc-rules" class="doc-nav-btn">RULES</a>
+            <a href="#doc-features" class="doc-nav-btn">FEATURES</a>
+            <a href="#doc-nodes" class="doc-nav-btn">NODES</a>
+            <a href="#doc-lab-session" class="doc-nav-btn">LAB SESSION</a>
+            <a href="#doc-builds" class="doc-nav-btn">BUILDS</a>
+          </div>
 
           <!-- SCENARIO -->
-          <div class="doc-section">
+          <div class="doc-section" id="doc-scenario">
             <div class="doc-title" style="color:var(--accent)">SCENARIO</div>
-            <div class="doc-desc">Loads all sandbox fields for testing Sully. Only include fields you want to set.</div>
-            <pre class="doc-code" id="doc-scenario">{"type":"scenario",
-"stage":"Rally Iberia — Montclar",
-"mode":"training",
-"mood":"frustrated",
-"time":"521.4",
-"top_speed":"162",
-"dist":"12400",
-"brake":"0.81",
-"throttle":"0.68",
-"crashes":"0",
-"overlap":"8",
-"lifts":"3",
-"s1":"98.2","s2":"112.4","s3":"89.1","s4":"105.6","s5":"116.1",
-"smooth":"72",
-"steer":"44",
-"corrections":"12",
-"tyre_fl":"0.82","tyre_fr":"0.79","tyre_bl":"0.85","tyre_br":"0.81",
-"sessions":"14",
-"form":"7.2",
-"weaknesses":"trail braking hairpins",
-"strengths":"throttle exit, sector 1",
-"last_fix":"brake pressure at 1606m",
-"prev_time":"519.8",
-"extra":"Any extra context for this scenario"}</pre>
-            <button class="doc-copy-btn" onclick="docCopy('doc-scenario')">COPY</button>
+            <div class="doc-desc">Fills the sandbox with a test scenario. Goes straight into Sully's prompt.</div>
+            <div class="doc-field-table">
+              <div class="doc-field-row doc-field-header"><span>FIELD</span><span>TYPE</span><span>VALUES</span><span>DESCRIPTION</span></div>
+              <div class="doc-field-row"><span class="doc-field-req">type</span><span>string</span><span>"scenario"</span><span>Required. Identifies this as a scenario.</span></div>
+              <div class="doc-field-row"><span>stage</span><span>string</span><span>any text</span><span>Stage name e.g. "Rally Iberia — Montclar"</span></div>
+              <div class="doc-field-row"><span>mode</span><span>string</span><span>training · race · qualifying · consistency · mental · setup</span><span>Coaching mode Sully uses</span></div>
+              <div class="doc-field-row"><span>mood</span><span>string</span><span>neutral · confident · frustrated · tired · angry</span><span>Driver's emotional state</span></div>
+              <div class="doc-field-row"><span>time</span><span>string</span><span>e.g. "521.4"</span><span>Stage time in seconds</span></div>
+              <div class="doc-field-row"><span>prev_time</span><span>string</span><span>e.g. "532.8"</span><span>Previous run time — Sully calculates delta</span></div>
+              <div class="doc-field-row"><span>top_speed</span><span>string</span><span>e.g. "168"</span><span>Top speed in kph</span></div>
+              <div class="doc-field-row"><span>dist</span><span>string</span><span>e.g. "12400"</span><span>Stage distance in metres</span></div>
+              <div class="doc-field-row"><span>brake</span><span>string</span><span>0.0 – 1.0</span><span>Average brake pressure this run</span></div>
+              <div class="doc-field-row"><span>throttle</span><span>string</span><span>0.0 – 1.0</span><span>Average throttle this run</span></div>
+              <div class="doc-field-row"><span>crashes</span><span>string</span><span>integer e.g. "2"</span><span>Number of crashes/impacts</span></div>
+              <div class="doc-field-row"><span>overlap</span><span>string</span><span>integer</span><span>Brake+throttle overlap frame count</span></div>
+              <div class="doc-field-row"><span>lifts</span><span>string</span><span>integer</span><span>Hard throttle lift count</span></div>
+              <div class="doc-field-row"><span>s1–s5</span><span>string</span><span>e.g. "94.1"</span><span>Sector times in seconds (s1, s2, s3, s4, s5)</span></div>
+              <div class="doc-field-row"><span>smooth</span><span>string</span><span>0 – 100</span><span>Throttle smoothness index</span></div>
+              <div class="doc-field-row"><span>steer</span><span>string</span><span>0 – 100</span><span>Steering aggression index</span></div>
+              <div class="doc-field-row"><span>corrections</span><span>string</span><span>integer</span><span>Steering direction reversal count</span></div>
+              <div class="doc-field-row"><span>tyre_fl · fr · bl · br</span><span>string</span><span>0.0 – 1.0</span><span>Tyre state per corner (1.0=new, 0.0=destroyed)</span></div>
+              <div class="doc-field-row"><span>sessions</span><span>string</span><span>integer</span><span>Total coaching sessions for this driver</span></div>
+              <div class="doc-field-row"><span>form</span><span>string</span><span>0.0 – 10.0</span><span>Driver form score</span></div>
+              <div class="doc-field-row"><span>weaknesses</span><span>string</span><span>comma separated</span><span>Known weak areas e.g. "trail braking, hairpins"</span></div>
+              <div class="doc-field-row"><span>strengths</span><span>string</span><span>comma separated</span><span>Known strong areas</span></div>
+              <div class="doc-field-row"><span>last_fix</span><span>string</span><span>any text</span><span>Last coaching fix given — Sully won't repeat it</span></div>
+              <div class="doc-field-row"><span>extra</span><span>string</span><span>any text</span><span>Free text context — anything else Sully should know</span></div>
+            </div>
+            <button class="doc-copy-btn" onclick="docCopy('doc-scenario-ex')">COPY EXAMPLE</button>
+            <pre class="doc-code" id="doc-scenario-ex" style="margin-top:8px">{"type":"scenario","stage":"Rally Iberia — Montclar","mode":"training","mood":"frustrated","time":"521.4","prev_time":"532.8","brake":"0.81","crashes":"0","s1":"98.2","s2":"112.4","s3":"89.1","s4":"105.6","s5":"116.1","smooth":"72","tyre_fl":"0.82","tyre_fr":"0.79","weaknesses":"trail braking","last_fix":"brake pressure at 1606m","extra":"3rd consecutive run with same issue"}</pre>
           </div>
 
           <!-- IDENTITY -->
-          <div class="doc-section">
+          <div class="doc-section" id="doc-identity">
             <div class="doc-title" style="color:var(--purple)">IDENTITY BLOCKS</div>
-            <div class="doc-desc">Adds blocks to Sully's identity in the Lab. Categories: voice, philosophy, psychology, redlines, examples.</div>
-            <pre class="doc-code" id="doc-identity">{"type":"identity",
-"blocks":[
-  {
-    "category":"voice",
-    "title":"Block title",
-    "content":"The actual content of this identity block...",
-    "priority":90,
-    "enabled":true
-  }
-]}</pre>
-            <button class="doc-copy-btn" onclick="docCopy('doc-identity')">COPY</button>
+            <div class="doc-desc">Adds personality blocks to Sully's identity. Each block becomes a chunk of his system prompt.</div>
+            <div class="doc-field-table">
+              <div class="doc-field-row doc-field-header"><span>FIELD</span><span>TYPE</span><span>VALUES</span><span>DESCRIPTION</span></div>
+              <div class="doc-field-row"><span class="doc-field-req">type</span><span>string</span><span>"identity"</span><span>Required.</span></div>
+              <div class="doc-field-row"><span class="doc-field-req">blocks</span><span>array</span><span>see below</span><span>Required. Array of block objects.</span></div>
+              <div class="doc-field-row doc-field-sub"><span class="doc-field-req">category</span><span>string</span><span>voice · philosophy · psychology · redlines · examples</span><span>Which category this block belongs to</span></div>
+              <div class="doc-field-row doc-field-sub"><span class="doc-field-req">title</span><span>string</span><span>any text</span><span>Short label for the block</span></div>
+              <div class="doc-field-row doc-field-sub"><span class="doc-field-req">content</span><span>string</span><span>any text</span><span>The actual instruction/content Sully receives</span></div>
+              <div class="doc-field-row doc-field-sub"><span>priority</span><span>integer</span><span>0 – 100</span><span>Higher = earlier in prompt. Default 50.</span></div>
+              <div class="doc-field-row doc-field-sub"><span>enabled</span><span>boolean</span><span>true · false</span><span>Whether this block is active. Default true.</span></div>
+            </div>
+            <div class="doc-cat-guide">
+              <div class="doc-cat-title">CATEGORY GUIDE</div>
+              <div class="doc-cat-row"><span style="color:var(--accent)">voice</span><span>How Sully speaks — tone, sentence length, vocabulary, what he never says</span></div>
+              <div class="doc-cat-row"><span style="color:var(--purple)">philosophy</span><span>What Sully believes about coaching, improvement, data</span></div>
+              <div class="doc-cat-row"><span style="color:var(--amber)">psychology</span><span>How Sully reads and adapts to the driver's mental state</span></div>
+              <div class="doc-cat-row"><span style="color:var(--red)">redlines</span><span>Hard limits — things Sully must never do or say</span></div>
+              <div class="doc-cat-row"><span style="color:var(--green)">examples</span><span>Example good/bad responses for Sully to calibrate against</span></div>
+            </div>
+            <button class="doc-copy-btn" onclick="docCopy('doc-identity-ex')">COPY EXAMPLE</button>
+            <pre class="doc-code" id="doc-identity-ex" style="margin-top:8px">{"type":"identity","blocks":[{"category":"voice","title":"Keep it short","content":"3-5 sentences maximum. One point, one fix, one challenge. Stop when you've said it.","priority":95},{"category":"redlines","title":"No AI phrases","content":"Never say 'based on your data', 'great job', or use bullet points.","priority":100}]}</pre>
           </div>
 
           <!-- RULES -->
-          <div class="doc-section">
+          <div class="doc-section" id="doc-rules">
             <div class="doc-title" style="color:var(--green)">RULES</div>
-            <div class="doc-desc">Adds behavioural IF/THEN rules to the Lab.</div>
-            <pre class="doc-code" id="doc-rules">{"type":"rules",
-"rules":[
-  {
-    "title":"Rule name",
-    "condition":"IF this condition is true",
-    "action":"THEN do this action",
-    "priority":90,
-    "enabled":true
-  }
-]}</pre>
-            <button class="doc-copy-btn" onclick="docCopy('doc-rules')">COPY</button>
+            <div class="doc-desc">Behavioural IF/THEN logic. Rules fire automatically during every debrief.</div>
+            <div class="doc-field-table">
+              <div class="doc-field-row doc-field-header"><span>FIELD</span><span>TYPE</span><span>VALUES</span><span>DESCRIPTION</span></div>
+              <div class="doc-field-row"><span class="doc-field-req">type</span><span>string</span><span>"rules"</span><span>Required.</span></div>
+              <div class="doc-field-row"><span class="doc-field-req">rules</span><span>array</span><span>see below</span><span>Required. Array of rule objects.</span></div>
+              <div class="doc-field-row doc-field-sub"><span class="doc-field-req">title</span><span>string</span><span>any text</span><span>Short name for this rule</span></div>
+              <div class="doc-field-row doc-field-sub"><span class="doc-field-req">condition</span><span>string</span><span>any text</span><span>The IF part — describe when this rule should fire</span></div>
+              <div class="doc-field-row doc-field-sub"><span class="doc-field-req">action</span><span>string</span><span>any text</span><span>The THEN part — what Sully should do</span></div>
+              <div class="doc-field-row doc-field-sub"><span>priority</span><span>integer</span><span>0 – 100</span><span>Higher priority rules are injected first. Default 50.</span></div>
+              <div class="doc-field-row doc-field-sub"><span>enabled</span><span>boolean</span><span>true · false</span><span>Whether this rule is active. Default true.</span></div>
+            </div>
+            <button class="doc-copy-btn" onclick="docCopy('doc-rules-ex')">COPY EXAMPLE</button>
+            <pre class="doc-code" id="doc-rules-ex" style="margin-top:8px">{"type":"rules","rules":[{"title":"Never repeat last fix","condition":"last_fix field matches current observation","action":"Find a different issue. Reference last fix only to confirm if it improved.","priority":100},{"title":"Crash first","condition":"crashes > 0","action":"Acknowledge the crash before any data analysis. One sentence only.","priority":98}]}</pre>
           </div>
 
           <!-- FEATURES -->
-          <div class="doc-section">
+          <div class="doc-section" id="doc-features">
             <div class="doc-title" style="color:var(--amber)">FEATURES</div>
-            <div class="doc-desc">Adds features to the Feature Status tab. Statuses: working, broken, partial, planned, retired.</div>
-            <pre class="doc-code" id="doc-features">{"type":"features",
-"features":[
-  {
-    "group_name":"Group Name",
-    "name":"Feature name",
-    "status":"working",
-    "note":"Optional description"
-  }
-]}</pre>
-            <button class="doc-copy-btn" onclick="docCopy('doc-features')">COPY</button>
+            <div class="doc-desc">Adds entries to the Feature Status tab.</div>
+            <div class="doc-field-table">
+              <div class="doc-field-row doc-field-header"><span>FIELD</span><span>TYPE</span><span>VALUES</span><span>DESCRIPTION</span></div>
+              <div class="doc-field-row"><span class="doc-field-req">type</span><span>string</span><span>"features"</span><span>Required.</span></div>
+              <div class="doc-field-row"><span class="doc-field-req">features</span><span>array</span><span>see below</span><span>Required. Array of feature objects.</span></div>
+              <div class="doc-field-row doc-field-sub"><span class="doc-field-req">group_name</span><span>string</span><span>any text</span><span>Group/category the feature belongs to</span></div>
+              <div class="doc-field-row doc-field-sub"><span class="doc-field-req">name</span><span>string</span><span>any text</span><span>Feature name</span></div>
+              <div class="doc-field-row doc-field-sub"><span class="doc-field-req">status</span><span>string</span><span>working · broken · partial · planned · retired</span><span>Current status</span></div>
+              <div class="doc-field-row doc-field-sub"><span>note</span><span>string</span><span>any text</span><span>Optional description or implementation note</span></div>
+            </div>
+            <button class="doc-copy-btn" onclick="docCopy('doc-features-ex')">COPY EXAMPLE</button>
+            <pre class="doc-code" id="doc-features-ex" style="margin-top:8px">{"type":"features","features":[{"group_name":"Sully Lab","name":"Builds system","status":"working","note":"Save/load complete personality snapshots"},{"group_name":"Sully Lab","name":"Prompt visualiser","status":"planned","note":"Animated node-by-node prompt assembly"}]}</pre>
           </div>
 
           <!-- NODES -->
-          <div class="doc-section">
+          <div class="doc-section" id="doc-nodes">
             <div class="doc-title" style="color:var(--accent)">BRAINSTORM NODES</div>
-            <div class="doc-desc">Adds nodes, groups and connections to the Brainstorm canvas. Node types: idea, feature, bug, ui, note, html, group.</div>
-            <pre class="doc-code" id="doc-nodes">{"type":"nodes",
-"groups":[
-  {"title":"Group Name","w":500,"h":280}
-],
-"nodes":[
-  {
-    "id":"node_a",
-    "type":"idea",
-    "title":"Node title",
-    "notes":"Node description",
-    "group":"Group Name"
-  },
-  {
-    "id":"node_b",
-    "type":"feature",
-    "title":"Another node",
-    "notes":"Description"
-  }
-],
-"edges":[
-  {"from":"node_a","to":"node_b","label":"connects to"}
-]}</pre>
-            <button class="doc-copy-btn" onclick="docCopy('doc-nodes')">COPY</button>
+            <div class="doc-desc">Adds nodes, groups and wires to the Brainstorm canvas.</div>
+            <div class="doc-field-table">
+              <div class="doc-field-row doc-field-header"><span>FIELD</span><span>TYPE</span><span>VALUES</span><span>DESCRIPTION</span></div>
+              <div class="doc-field-row"><span class="doc-field-req">type</span><span>string</span><span>"nodes"</span><span>Required.</span></div>
+              <div class="doc-field-row"><span>groups</span><span>array</span><span>see below</span><span>Optional. Group boxes on the canvas.</span></div>
+              <div class="doc-field-row doc-field-sub"><span class="doc-field-req">title</span><span>string</span><span>any text</span><span>Group label — used to assign nodes to this group</span></div>
+              <div class="doc-field-row doc-field-sub"><span>w</span><span>integer</span><span>pixels</span><span>Group width. Default auto-sized to fit children.</span></div>
+              <div class="doc-field-row doc-field-sub"><span>h</span><span>integer</span><span>pixels</span><span>Group height. Default auto-sized.</span></div>
+              <div class="doc-field-row"><span>nodes</span><span>array</span><span>see below</span><span>The nodes to place on the canvas.</span></div>
+              <div class="doc-field-row doc-field-sub"><span class="doc-field-req">id</span><span>string</span><span>any unique string</span><span>Used by edges to reference this node</span></div>
+              <div class="doc-field-row doc-field-sub"><span class="doc-field-req">type</span><span>string</span><span>idea · feature · bug · ui · note · html · group</span><span>Node type — controls colour</span></div>
+              <div class="doc-field-row doc-field-sub"><span class="doc-field-req">title</span><span>string</span><span>any text</span><span>Node title displayed on canvas</span></div>
+              <div class="doc-field-row doc-field-sub"><span>notes</span><span>string</span><span>any text</span><span>Node body text</span></div>
+              <div class="doc-field-row doc-field-sub"><span>group</span><span>string</span><span>must match group title</span><span>Places node inside a group box</span></div>
+              <div class="doc-field-row"><span>edges</span><span>array</span><span>see below</span><span>Connections between nodes.</span></div>
+              <div class="doc-field-row doc-field-sub"><span class="doc-field-req">from</span><span>string</span><span>node id</span><span>Source node id</span></div>
+              <div class="doc-field-row doc-field-sub"><span class="doc-field-req">to</span><span>string</span><span>node id</span><span>Target node id</span></div>
+              <div class="doc-field-row doc-field-sub"><span>label</span><span>string</span><span>any text</span><span>Optional label shown on the wire</span></div>
+            </div>
+            <button class="doc-copy-btn" onclick="docCopy('doc-nodes-ex')">COPY EXAMPLE</button>
+            <pre class="doc-code" id="doc-nodes-ex" style="margin-top:8px">{"type":"nodes","groups":[{"title":"Memory System","w":520,"h":280}],"nodes":[{"id":"runs","type":"feature","title":"Runs array","notes":"Every run stored with full metrics","group":"Memory System"},{"id":"issues","type":"feature","title":"Issue tracker","notes":"Flag count, metric history, improvement flag","group":"Memory System"},{"id":"prompt","type":"idea","title":"Prompt builder","notes":"Injects full history into debrief"}],"edges":[{"from":"runs","to":"prompt","label":"feeds"},{"from":"issues","to":"prompt","label":"feeds"}]}</pre>
           </div>
 
           <!-- LAB SESSION -->
-          <div class="doc-section">
-            <div class="doc-title" style="color:var(--purple)">LAB SESSION — EVERYTHING AT ONCE</div>
-            <div class="doc-desc">The most powerful format. Loads scenario + identity + rules + nodes in a single paste. Use this when Claude sends you a full session package.</div>
-            <pre class="doc-code" id="doc-lab-session">{"type":"lab_session",
-"scenario":{
-  "stage":"Rally Iberia",
-  "mood":"frustrated",
-  "brake":"0.81",
-  "extra":"Test scenario description"
-},
-"identity":[
-  {
-    "category":"voice",
-    "title":"Block title",
-    "content":"Content...",
-    "priority":90
-  }
-],
-"rules":[
-  {
-    "title":"Rule name",
-    "condition":"IF condition",
-    "action":"THEN action",
-    "priority":88
-  }
-],
-"nodes":{
-  "groups":[{"title":"Group"}],
-  "nodes":[{"id":"a","type":"idea","title":"Node","group":"Group"}],
-  "edges":[]
-}}</pre>
-            <button class="doc-copy-btn" onclick="docCopy('doc-lab-session')">COPY</button>
+          <div class="doc-section" id="doc-lab-session">
+            <div class="doc-title" style="color:var(--purple)">LAB SESSION</div>
+            <div class="doc-desc">Master format. Loads scenario + identity + rules + nodes in one paste. Use when you want to set up a complete test environment at once.</div>
+            <div class="doc-field-table">
+              <div class="doc-field-row doc-field-header"><span>FIELD</span><span>TYPE</span><span>VALUES</span><span>DESCRIPTION</span></div>
+              <div class="doc-field-row"><span class="doc-field-req">type</span><span>string</span><span>"lab_session"</span><span>Required.</span></div>
+              <div class="doc-field-row"><span>scenario</span><span>object</span><span>scenario fields</span><span>Optional. Same fields as scenario type (without "type" field).</span></div>
+              <div class="doc-field-row"><span>identity</span><span>array</span><span>block objects</span><span>Optional. Same as identity blocks array.</span></div>
+              <div class="doc-field-row"><span>rules</span><span>array</span><span>rule objects</span><span>Optional. Same as rules array.</span></div>
+              <div class="doc-field-row"><span>nodes</span><span>object</span><span>{groups,nodes,edges}</span><span>Optional. Same as nodes format.</span></div>
+              <div class="doc-field-row"><span>features</span><span>array</span><span>feature objects</span><span>Optional. Same as features array.</span></div>
+            </div>
+            <button class="doc-copy-btn" onclick="docCopy('doc-lab-session-ex')">COPY EXAMPLE</button>
+            <pre class="doc-code" id="doc-lab-session-ex" style="margin-top:8px">{"type":"lab_session","scenario":{"stage":"Rally Iberia","mood":"frustrated","brake":"0.81","crashes":"2","extra":"Test crash response behaviour"},"identity":[{"category":"redlines","title":"Crash response","content":"If crashes > 0, acknowledge the crash before any data. One sentence. Then data.","priority":98}],"rules":[{"title":"Post crash tone","condition":"crash_count > 0","action":"Lead with acknowledgement, soften data delivery, end with one forward-looking fix only","priority":98}]}</pre>
+          </div>
+
+          <!-- BUILDS -->
+          <div class="doc-section" id="doc-builds">
+            <div class="doc-title" style="color:var(--green)">BUILDS</div>
+            <div class="doc-desc">Builds are saved via the Lab → Builds tab. When exported they use the lab_session format with extra metadata fields.</div>
+            <div class="doc-field-table">
+              <div class="doc-field-row doc-field-header"><span>FIELD</span><span>TYPE</span><span>VALUES</span><span>DESCRIPTION</span></div>
+              <div class="doc-field-row"><span>_build_name</span><span>string</span><span>any text</span><span>Name of this build — cosmetic only</span></div>
+              <div class="doc-field-row"><span>_racing_style</span><span>string</span><span>rally · circuit · drift · sim · beginner · other</span><span>Racing style this build is tuned for</span></div>
+              <div class="doc-field-row"><span>_exported</span><span>string</span><span>ISO date</span><span>When this was exported — auto-set</span></div>
+              <div class="doc-field-row"><span>identity</span><span>array</span><span>block objects</span><span>Full identity snapshot</span></div>
+              <div class="doc-field-row"><span>rules</span><span>array</span><span>rule objects</span><span>Full rules snapshot</span></div>
+            </div>
+            <div style="font-size:9px;color:var(--txt3);margin-top:8px;line-height:1.6">Builds are imported the same as lab_session — the importer reads identity and rules and loads them. The _build_name and _racing_style fields are ignored by the importer but useful for your own reference.</div>
           </div>
 
         </div>
