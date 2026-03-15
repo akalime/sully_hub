@@ -1183,8 +1183,11 @@ let searchQuery = '';
 function nav(view) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.sb-item').forEach(i => i.classList.remove('active'));
-  document.getElementById('view-' + view).classList.add('active');
-  document.querySelector(`[onclick="nav('${view}')"]`).classList.add('active');
+  const viewEl = document.getElementById('view-' + view);
+  if (!viewEl) { console.warn('[nav] view not found:', view); return; }
+  viewEl.classList.add('active');
+  const sbEl = document.querySelector(`[onclick="nav('${view}')"]`);
+  if (sbEl) sbEl.classList.add('active');
   // Update bottom nav active state
   document.querySelectorAll('.bn-item').forEach(i => i.classList.remove('active'));
   const bnActive = document.querySelector(`.bn-item[data-view="${view}"]`);
@@ -4904,8 +4907,7 @@ async function _importIdentityBlocks(blocks) {
     }).select().single();
     if (!res.error) { LAB.identity.push(res.data); added++; }
   }
-  nav('lab');
-  setTimeout(function(){ labSwitchTab('identity'); labRenderActiveTab(); labRenderMemoryBar(); }, 100);
+  if (document.getElementById('view-lab')) { setTimeout(function(){ if(LAB.activeTab) { labSwitchTab('identity'); labRenderActiveTab(); labRenderMemoryBar(); }}, 100); }
   return added + ' identity blocks added';
 }
 
@@ -4930,8 +4932,7 @@ async function _importRulesList(rules) {
     }).select().single();
     if (!res.error) { LAB.rules.push(res.data); added++; }
   }
-  nav('lab');
-  setTimeout(function(){ labSwitchTab('rules'); labRenderActiveTab(); labRenderMemoryBar(); }, 100);
+  if (document.getElementById('view-lab')) { setTimeout(function(){ if(LAB.activeTab) { labSwitchTab('rules'); labRenderActiveTab(); labRenderMemoryBar(); }}, 100); }
   return added + ' rules added';
 }
 
@@ -4955,9 +4956,8 @@ async function _importFeatures(parsed) {
       added++;
     }
   }
-  renderFeatures();
-  renderDashboard();
-  nav('features');
+  if (typeof renderFeatures === 'function') renderFeatures();
+  if (typeof renderDashboard === 'function') renderDashboard();
   return added + ' features added';
 }
 
@@ -4995,8 +4995,7 @@ function _importBrainstorm(parsed) {
 
   var added = BS.nodes.length - before;
   var edges = BS.edges.length - edgesBefore;
-  nav('brainstorm');
-  return added + ' nodes + ' + edges + ' connections added to Brainstorm';
+  return added + ' nodes + ' + edges + ' connections added to Brainstorm (open Brainstorm tab to view)';
 }
 
 // Preview as user types
