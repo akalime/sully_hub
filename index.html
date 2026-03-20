@@ -981,8 +981,9 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
           <button class="bs-btn" onclick="bsAddGroup()">+ GROUP</button>
           <button class="bs-btn bs-btn-purple" onclick="bsToggleConnect()" id="bs-connect-btn">⟷ CONNECT</button>
           <button class="bs-btn" id="bs-import-btn" onclick="openUniversalImport()">+ FROM CLAUDE</button>
+          <button class="bs-btn" onclick="bsFitAll()" title="Fit all nodes to screen">⊡ FIT</button>
           <button class="bs-btn" onclick="bsClearCanvas()" style="color:var(--red)">CLEAR</button>
-          <span style="font-size:9px;color:var(--txt3);margin-left:4px" id="bs-status">Hold to drag · Pinch to zoom</span>
+          <span style="font-size:9px;color:var(--txt3);margin-left:4px" id="bs-status">Hold to drag · Pinch to zoom · Drag corner to resize</span>
         </div>
         <canvas id="bs-canvas"></canvas>
       </div>
@@ -2017,12 +2018,23 @@ const BS = {
   nodes: [], edges: [],
   pan: {x:0, y:0}, scale: 1,
   dragging: null, dragOffX: 0, dragOffY: 0,
+  resizing: null, resizeStartW: 0, resizeStartH: 0, resizeStartMX: 0, resizeStartMY: 0,
   panning: false, panStart: {x:0, y:0}, panOrigin: {x:0, y:0},
   connecting: false, connectFrom: null,
   dirty: false, saveTimer: null,
   inited: false,
   W: 0, H: 0,
 };
+
+function bsHitResizeHandle(worldX, worldY) {
+  const HANDLE = 14 / BS.scale;
+  for (let i = BS.nodes.length-1; i >= 0; i--) {
+    const n = BS.nodes[i];
+    if (worldX >= n.x + n.w - HANDLE && worldX <= n.x + n.w &&
+        worldY >= n.y + n.h - HANDLE && worldY <= n.y + n.h) return i;
+  }
+  return -1;
+}
 
 const BS_COLORS = {
   idea:    { bg:'#1a0a2e', border:'#a855f7', label:'#a855f7' },
@@ -2103,6 +2115,9 @@ function bsDraw() {
   // Groups behind, then regular nodes
   BS.nodes.filter(n => n.type === 'group').forEach((n, _, arr) => bsDrawNode(ctx, n, BS.nodes.indexOf(n)));
   BS.nodes.filter(n => n.type !== 'group').forEach(n => bsDrawNode(ctx, n, BS.nodes.indexOf(n)));
+
+  // Minimap overlay
+  bsDrawMinimap(ctx);
 }
 
 // World→screen
@@ -2242,6 +2257,21 @@ function bsDrawNode(ctx, n, idx) {
   }
 
   ctx.restore(); // end clip
+
+  // Resize handle (bottom-right corner)
+  const hSize = Math.max(8, 10 * BS.scale);
+  const hx = sx + sw - hSize;
+  const hy = sy + sh - hSize;
+  ctx.save();
+  ctx.fillStyle = isSelected ? col.border + 'cc' : col.border + '44';
+  ctx.beginPath();
+  ctx.moveTo(sx+sw, sy+sh-hSize);
+  ctx.lineTo(sx+sw, sy+sh);
+  ctx.lineTo(sx+sw-hSize, sy+sh);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
   ctx.restore(); // end save
 }
 
@@ -2596,6 +2626,18 @@ function bsOnMouseDown(e) {
     bsDraw(); return;
   }
 
+  // Check resize handle first
+  const resizeHit = bsHitResizeHandle(wp.x, wp.y);
+  if (resizeHit >= 0) {
+    BS.resizing = resizeHit;
+    BS.resizeStartW = BS.nodes[resizeHit].w;
+    BS.resizeStartH = BS.nodes[resizeHit].h;
+    BS.resizeStartMX = wp.x;
+    BS.resizeStartMY = wp.y;
+    BS.canvas.style.cursor = 'nwse-resize';
+    return;
+  }
+
   if (hit >= 0) {
     BS.dragging = hit;
     BS.dragOffX = wp.x - BS.nodes[hit].x;
@@ -2613,6 +2655,12 @@ function bsOnMouseMove(e) {
   const wp = bsWorldPos(e);
   BS._mouseWorld = wp;
 
+  if (BS.resizing !== null) {
+    const n = BS.nodes[BS.resizing];
+    n.w = Math.max(140, BS.resizeStartW + (wp.x - BS.resizeStartMX));
+    n.h = Math.max(80, BS.resizeStartH + (wp.y - BS.resizeStartMY));
+    bsDraw(); return;
+  }
   if (BS.dragging !== null) {
     BS.nodes[BS.dragging].x = wp.x - BS.dragOffX;
     BS.nodes[BS.dragging].y = wp.y - BS.dragOffY;
@@ -2623,10 +2671,18 @@ function bsOnMouseMove(e) {
     BS.pan.y = BS.panOrigin.y + (e.clientY - BS.panStart.y);
     bsDraw(); return;
   }
+  // Cursor hint for resize handle
+  const rh = bsHitResizeHandle(wp.x, wp.y);
+  BS.canvas.style.cursor = rh >= 0 ? 'nwse-resize' : (BS.connecting ? 'crosshair' : '');
   if (BS.connecting) bsDraw();
 }
 
 function bsOnMouseUp(e) {
+  if (BS.resizing !== null) {
+    bsScheduleSave();
+    BS.resizing = null;
+    BS.canvas.style.cursor = '';
+  }
   if (BS.dragging !== null) {
     bsScheduleSave();
     BS.dragging = null;
@@ -2803,6 +2859,59 @@ function bsClearCanvas() {
   if (!confirm('Clear the entire brainstorm board?')) return;
   BS.nodes = []; BS.edges = [];
   bsDraw(); bsScheduleSave();
+}
+
+function bsDrawMinimap(ctx) {
+  if (!BS.nodes.length) return;
+  const MM_W = 140, MM_H = 90, MM_PAD = 8, MM_X = BS.W - MM_W - 12, MM_Y = BS.H - MM_H - 12;
+  // Background
+  ctx.save();
+  ctx.fillStyle = 'rgba(7,9,12,0.85)';
+  ctx.strokeStyle = '#1e2d3d';
+  ctx.lineWidth = 1;
+  bsRoundRect(ctx, MM_X, MM_Y, MM_W, MM_H, 4);
+  ctx.fill(); ctx.stroke();
+  // Find bounds of all nodes
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  BS.nodes.forEach(n=>{minX=Math.min(minX,n.x);minY=Math.min(minY,n.y);maxX=Math.max(maxX,n.x+n.w);maxY=Math.max(maxY,n.y+n.h);});
+  const bW=Math.max(maxX-minX,1),bH=Math.max(maxY-minY,1);
+  const scaleX=(MM_W-MM_PAD*2)/bW,scaleY=(MM_H-MM_PAD*2)/bH;
+  const mmScale=Math.min(scaleX,scaleY);
+  const offX=MM_X+MM_PAD+(MM_W-MM_PAD*2-bW*mmScale)/2;
+  const offY=MM_Y+MM_PAD+(MM_H-MM_PAD*2-bH*mmScale)/2;
+  // Draw node dots
+  BS.nodes.forEach(n=>{
+    const col=BS_COLORS[n.type]||BS_COLORS.note;
+    ctx.fillStyle=n.type==='group'?col.border+'30':col.border+'90';
+    const nx=offX+(n.x-minX)*mmScale,ny=offY+(n.y-minY)*mmScale;
+    const nw=Math.max(3,n.w*mmScale),nh=Math.max(2,n.h*mmScale);
+    ctx.fillRect(nx,ny,nw,nh);
+  });
+  // Draw viewport rect
+  const vpX=(-BS.pan.x/BS.scale-minX)*mmScale+offX;
+  const vpY=(-BS.pan.y/BS.scale-minY)*mmScale+offY;
+  const vpW=(BS.W/BS.scale)*mmScale,vpH=(BS.H/BS.scale)*mmScale;
+  ctx.strokeStyle='rgba(0,200,240,0.6)';ctx.lineWidth=1;
+  ctx.strokeRect(vpX,vpY,vpW,vpH);
+  ctx.restore();
+}
+
+function bsFitAll() {
+  if (!BS.nodes.length) return;
+  const PAD = 60;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  BS.nodes.forEach(n => {
+    minX = Math.min(minX, n.x); minY = Math.min(minY, n.y);
+    maxX = Math.max(maxX, n.x + n.w); maxY = Math.max(maxY, n.y + n.h);
+  });
+  const contentW = maxX - minX, contentH = maxY - minY;
+  if (contentW < 1 || contentH < 1) return;
+  const scaleX = (BS.W - PAD*2) / contentW;
+  const scaleY = (BS.H - PAD*2) / contentH;
+  BS.scale = Math.min(scaleX, scaleY, 2);
+  BS.pan.x = (BS.W - contentW * BS.scale) / 2 - minX * BS.scale;
+  BS.pan.y = (BS.H - contentH * BS.scale) / 2 - minY * BS.scale;
+  bsDraw();
 }
 
 // ── Image support ─────────────────────────────────────────
@@ -3113,10 +3222,41 @@ function bsDoImport() {
     var gw = g.w || Math.max(autoW, 320);
     var gh = g.h || Math.max(autoH, 200);
 
-    // Auto-layout groups in a row
-    var totalGroupW = importGroups.length * (gw + 30);
-    var gx = g.x !== undefined ? g.x : (cx - totalGroupW / 2 + gi * (gw + 30));
-    var gy = g.y !== undefined ? g.y : (cy - gh / 2 - (importNodes.filter(function(n){ return !n.group; }).length > 0 ? 150 : 0));
+    // Auto-layout groups in a responsive grid (3 columns)
+    var GRID_COLS = 3;
+    var GRID_GAP_X = 40;
+    var GRID_GAP_Y = 60;
+    var col = gi % GRID_COLS;
+    var row = Math.floor(gi / GRID_COLS);
+    // Calculate offset based on widths of previous groups in same row
+    var rowGroups = importGroups.slice(0, gi).filter(function(_,i){ return Math.floor(i/GRID_COLS) === row; });
+    var xOffset = rowGroups.reduce(function(acc, pg, pgi) {
+      var pc = importNodes.filter(function(n){ return n.group === (pg.title||('Group'+pgi)); });
+      var pcols = Math.ceil(Math.sqrt(Math.max(1, pc.length)));
+      var prows = Math.ceil(pc.length / pcols);
+      var pw = pg.w || Math.max(PAD*2 + pcols*NODE_W + (pcols-1)*(NODE_SPACING_X-NODE_W), 320);
+      return acc + pw + GRID_GAP_X;
+    }, 0);
+    // Find tallest group in previous rows for y positioning
+    var yOffset = 0;
+    for (var pr = 0; pr < row; pr++) {
+      var rowMaxH = 0;
+      importGroups.forEach(function(pg, pgi) {
+        if (Math.floor(pgi/GRID_COLS) !== pr) return;
+        var pc = importNodes.filter(function(n){ return n.group === (pg.title||('Group'+pgi)); });
+        var pcols2 = Math.ceil(Math.sqrt(Math.max(1,pc.length)));
+        var prows2 = Math.ceil(pc.length/pcols2);
+        var ph = pg.h || Math.max(40+PAD*2+prows2*NODE_H+(prows2-1)*(NODE_SPACING_Y-NODE_H), 200);
+        if (ph > rowMaxH) rowMaxH = ph;
+      });
+      yOffset += rowMaxH + GRID_GAP_Y;
+    }
+    var totalW = Math.min(GRID_COLS, importGroups.length) * (gw + GRID_GAP_X);
+    var totalRows = Math.ceil(importGroups.length / GRID_COLS);
+    var startX = cx - totalW / 2;
+    var startY = cy - (totalRows * (gh + GRID_GAP_Y)) / 2;
+    var gx = g.x !== undefined ? g.x : (startX + xOffset);
+    var gy = g.y !== undefined ? g.y : (startY + yOffset);
 
     groupPositions[title] = { x: gx, y: gy, w: gw, h: gh, nextX: gx + PAD, nextY: gy + 40 + PAD, cols: childCols, col: 0, row: 0 };
 
